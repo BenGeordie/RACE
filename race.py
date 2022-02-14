@@ -55,6 +55,14 @@ class Race(tf.Module):
         update = tf.ones(shape=indices.shape[0], dtype=tf.float64)
         self.arrays.assign(tf.tensor_scatter_nd_add(self.arrays, indices, update))
         return score
+    
+    def summary(self):
+        # TODO: 
+        # Mean
+        # Stdev
+        # Num zeros
+        # Nonzero min
+        # Max
 
 ########## TESTS ##########
 
