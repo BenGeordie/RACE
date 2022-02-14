@@ -63,6 +63,7 @@ class Race(tf.Module):
         # Num zeros
         # Nonzero min
         # Max
+        return
 
 ########## TESTS ##########
 
