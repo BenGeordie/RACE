@@ -13,6 +13,13 @@ def quantize(columns: np.array, bin_width: int, n_bins: int):
     
     return np.reshape(quantized, (columns.shape[0], -1))
 
+def separate_domains_by_range(columns: np.array):
+    """
+    Separate domains by shifting columns by the cumulative range of previous columns.
+    """
+    shifts = np.cumsum(np.max(columns, axis=0) - np.min(columns, axis=0))
+    return columns + shifts
+
 def separate_domains(columns: np.array):
     """
     Separate domains by interleaving them (instead of shifting by domain ranges).
@@ -22,6 +29,3 @@ def separate_domains(columns: np.array):
     n_domains = columns.shape[1]
     idx_shifts = np.arange(n_domains)
     return columns * n_domains + idx_shifts
-
-print(quantize(np.array([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5]]), 6, 6))
-print(separate_domains(quantize(np.array([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5]]), np.array([2, 2]), 2)))
