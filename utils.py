@@ -95,7 +95,7 @@ def weight_with_race(race: Race, embedding_model: tf.Module, accept_first_n: int
         random_num = tf.random.uniform(shape=[tf.shape(e)[0]])
         accepted_by_chance = tf.math.ceil(tf.constant(accept_prob) - random_num)
         # If accepted, weight is 1 / accept_prob.
-        accepted_by_chance_weights = tf.where(tf.cast(accepted_by_chance, dtype=tf.bool), tf.math.reciprocal_no_nan(random_num), [0.0])
+        accepted_by_chance_weights = tf.where(tf.cast(accepted_by_chance, dtype=tf.bool), tf.math.reciprocal_no_nan(accept_prob), [0.0])
 
         # If passingaccepted_by_score_weights == 1.0, keep the weight. Otherwise, if accepted by random chance,
         # weight by 1 / accept_prob
