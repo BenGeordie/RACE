@@ -1,6 +1,7 @@
 from typing import List
 import tensorflow as tf
 from race import Race
+import pdb
 
 # Tested lightly
 def load_csv(paths: List[str], sample_dim: int):
@@ -50,7 +51,7 @@ def weight_and_filter(dataset: tf.data.Dataset, weight_fn):
     """
     def map_fn(x, y):
         weights = tf.ones(shape=tf.shape(y), dtype=tf.float32)
-        weights *= weight_fn(x)
+        weights *= weight_fn(x,y)
         return (x, y, weights)
     return dataset.map(map_fn).filter(lambda _x, _y, w: w > 0)
 
@@ -69,37 +70,39 @@ def weight_with_race(race: Race, embedding_model: tf.Module, accept_first_n: int
             weight it 1 / accept_prob.
     """
     @tf.function(
-        input_signature=[tf.TensorSpec(shape=None, dtype=tf.float32), tf.TensorSpec(shape=None, dtype=tf.int64)])
+        input_signature=[tf.TensorSpec(shape=[None], dtype=tf.float32), tf.TensorSpec(shape=None, dtype=tf.int64)])
     def _weight(x, y):
         """
         Arguments:
             x: samples (both positive and negative)
             y: targets
         """
+        
+        e = embedding_model(x)
+
         # Accept everything if we have not seen too many samples.
         if race.samples_seen() < tf.constant(accept_first_n, dtype=tf.int64):
             return tf.ones(shape=tf.shape(e)[0])
         
-        e = embedding_model(x)
         # score_threshold <= 1.0
         # score_threshold - scores is in the range [-1 + score_threshold, score_threshold]
         # Thus, taking the ceiling results in 1 if score < threshold, 0 otherwise.
         scores = race.score(e)
-        accepted_by_score_weights = tf.math.ceil(score_threshold - scores)
+        accepted_by_score_weights = tf.cast(tf.math.ceil(score_threshold - scores), dtype=tf.float32)
         
         # Accepted by chance if random_num < accept_prob.
         # As above, taking the ceiling results in 1 if random_num < accept_prob, 0 otherwise.
-        random_num = tf.random.uniform(shape=tf.shape(e)[0])
+        random_num = tf.random.uniform(shape=[tf.shape(e)[0]])
         accepted_by_chance = tf.math.ceil(tf.constant(accept_prob) - random_num)
         # If accepted, weight is 1 / accept_prob.
-        accepted_by_chance_weights = tf.math.where(accepted_by_chance, tf.math.reciprocal_no_nan(random_num), [0.0])
+        accepted_by_chance_weights = tf.where(tf.cast(accepted_by_chance, dtype=tf.bool), tf.math.reciprocal_no_nan(random_num), [0.0])
 
         # If passingaccepted_by_score_weights == 1.0, keep the weight. Otherwise, if accepted by random chance,
         # weight by 1 / accept_prob
-        sampled_negative_weights = tf.where(accepted_by_score_weights, accepted_by_score_weights, accepted_by_chance_weights)
-
+        sampled_negative_weights = tf.where(tf.cast(accepted_by_score_weights, dtype=tf.bool), accepted_by_score_weights, accepted_by_chance_weights)
+        
         # Accept if positive, weight accordingly otherwise.
-        return tf.where(y, [1.0], sampled_negative_weights)
+        return tf.where(tf.cast(y, dtype=tf.bool), [1.0], sampled_negative_weights)
 
 
     return _weight

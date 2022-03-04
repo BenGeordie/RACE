@@ -27,13 +27,14 @@ def make_criteo_nn(embedding_model: tf.Module, hidden_layer_dims: List[int]):
     model = keras.Model(inputs, outputs)
 
     optimizer = keras.optimizers.Adam()
-    metric = keras.metrics.AUC()
+    metric_auc = keras.metrics.AUC()
+    metric_logloss = keras.metrics.BinaryCrossentropy()
+    metric_acc = keras.metrics.Accuracy()
     loss_fn = keras.losses.BinaryCrossentropy()
 
-    model.compile(loss=loss_fn, optimizer=optimizer, metrics=[metric])
+    model.compile(loss=loss_fn, optimizer=optimizer, metrics=[metric_auc, metric_logloss, metric_acc])
     return model
 
-import tensorflow as tf
 from tensorflow import keras
 
 # Tested lightly

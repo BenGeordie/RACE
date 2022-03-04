@@ -7,8 +7,10 @@ from race import Race
 def sample_pipeline():
     
     # Load data and split into train, validation, and test datasets.
-    data = utils.load_csv("path/to/criteo.csv")
-    train_ds, val_ds, test_ds = utils.split_train_val_test(data)
+    train_ds = utils.load_csv("../data/criteo_small.csv", sample_dim = 39)
+    val_ds = utils.load_csv("../data/criteo_small.csv", sample_dim = 39) # placeholder for validation data
+#     test_ds = utils.load_csv("path/to/criteo_test.csv")
+#     train_ds, val_ds, test_ds = utils.split_train_val_test(data)
 
     # RACE hyper parameters
     repetitions = 100
@@ -32,10 +34,21 @@ def sample_pipeline():
     # Dimensions of neural network hidden layers.
     hidden_layer_dims = [10_000, 10_000, 10_000]
     nn = make_criteo_nn(embedding_model, hidden_layer_dims)
+    
+    # Training hyper parameters
+    batch_size = 128
+    num_epoch = 1
+    buffer_size = 50_000_000 # should be greater or euqal to the data size
+    
+    #Shuffle and make batchwise data
+    batch_data_train = filtered_weighted_train_ds.shuffle(buffer_size).batch(batch_size) 
+    batch_data_val = val_ds.shuffle(buffer_size).batch(batch_size) 
+    
 
     # Run!
-    nn.fit(filtered_weighted_train_ds)
-    nn.evaluate(test_ds)
-    nn.evaluate(val_ds)
+    nn.fit(batch_data_train, validation_data=batch_data_val, epochs=num_epoch)
+    nn.evaluate(batch_data_val)
+    #     nn.evaluate(test_ds)
+
 
 

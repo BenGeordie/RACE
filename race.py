@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from lsh_functions import PStableHash
+import pdb
 
 # Tested lightly
 class Race(tf.Module):
@@ -83,7 +84,7 @@ class Race(tf.Module):
         # divided by the number of elements that had been previously indexed.
         score = tf.reduce_mean(tf.gather_nd(self._arrays, indices), axis=-1)
         # Prevent division by 0.
-        one_over_n = tf.math.reciprocal_no_nan(self._n)
+        one_over_n = tf.math.reciprocal_no_nan(tf.cast(self._n, dtype=tf.float64))
         score *= one_over_n
         
         # For each sample, increment the counters at the locations that they are hashed to.
