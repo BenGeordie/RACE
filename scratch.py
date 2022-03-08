@@ -16,11 +16,11 @@ def sample_pipeline():
     repetitions = 100
     concatenations = 2
     buckets = 1_000_000
-    p = 1.0
+    p = 2.0
     seed = 314152
     
-    embedding_model = make_criteo_embedding_model()
-    hash_module = PStableHash(embedding_model.output_shape[1], num_hashes=repetitions * concatenations, p=p, seed=seed)
+    race_embedding_model = make_criteo_embedding_model()
+    hash_module = PStableHash(race_embedding_model.output_shape[1], num_hashes=repetitions * concatenations, p=p, seed=seed)
     race = Race(repetitions, concatenations, buckets, hash_module)
 
     # Weighting function hyper parameters
@@ -28,12 +28,13 @@ def sample_pipeline():
     score_threshold = 0.05
     accept_prob = 0.05
     
-    weight_fn = utils.weight_with_race(race, embedding_model, accept_first_n, score_threshold, accept_prob)
+    weight_fn = utils.weight_with_race(race, race_embedding_model, accept_first_n, score_threshold, accept_prob)
     filtered_weighted_train_ds = utils.weight_and_filter(train_ds, weight_fn)
 
     # Dimensions of neural network hidden layers.
+    nn_embedding_model = make_criteo_embedding_model()
     hidden_layer_dims = [10_000, 10_000, 10_000]
-    nn = make_criteo_nn(embedding_model, hidden_layer_dims)
+    nn = make_criteo_nn(nn_embedding_model, hidden_layer_dims)
     
     # Training hyper parameters
     batch_size = 128
