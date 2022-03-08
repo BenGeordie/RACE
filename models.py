@@ -21,7 +21,7 @@ def make_criteo_nn(embedding_model: tf.Module, hidden_layer_dims: List[int]):
         final_layer
     ])
 
-    inputs = keras.Input(shape=(39,), dtype=tf.float32)
+    inputs = keras.Input(shape=(39,), dtype=tf.float32, name="nn_input")
     x = embedding_model(inputs)
     outputs = layers(x)
     model = keras.Model(inputs, outputs)
@@ -34,8 +34,6 @@ def make_criteo_nn(embedding_model: tf.Module, hidden_layer_dims: List[int]):
 
     model.compile(loss=loss_fn, optimizer=optimizer, metrics=[metric_auc, metric_logloss, metric_acc])
     return model
-
-from tensorflow import keras
 
 # Tested lightly
 
@@ -113,7 +111,7 @@ def make_criteo_embedding_model():
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
     ]
 
-    inputs = keras.Input(shape=(39,), dtype=tf.float32)
+    inputs = keras.Input(shape=(39,), dtype=tf.float32, name="embedding_input")
     int_inputs = tf.reshape(tf.gather(inputs, range(0,13), axis=-1), (-1, 13))
     outputs = keras.layers.Concatenate()([
         # First 13 entries in a Criteo sample are integral values.
