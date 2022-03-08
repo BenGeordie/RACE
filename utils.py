@@ -77,6 +77,8 @@ def weight_with_race(race: Race, embedding_model: tf.Module, accept_first_n: int
             x: samples (both positive and negative)
             y: targets
         """
+        if len(tf.shape(x)) < 2:
+            x = tf.reshape(x, (1, tf.shape(x)[0]))
         
         e = embedding_model(x)
 
