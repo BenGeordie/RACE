@@ -55,8 +55,10 @@ def weight_and_filter(dataset: tf.data.Dataset, weight_fn):
         weights = tf.math.multiply(weights,weight_fn(x,y))
 
         return (x, y, weights)
-    return dataset.map(map_fn).filter(lambda _x, _y, w: w > 0)
-
+    dataset_map = dataset.map(map_fn)
+    dataset_map_unbatch = dataset_map.unbatch()
+   
+    return dataset_map_unbatch.filter(lambda _x, _y, w: w > 0) 
 # Untested
 def weight_with_race(race: Race, embedding_model: tf.Module, accept_first_n: int, score_threshold: float, accept_prob: float):
     """Function factory for weighting samples with RACE. To be used in conjunction with weight_and_filter, defined above.
@@ -80,8 +82,8 @@ def weight_with_race(race: Race, embedding_model: tf.Module, accept_first_n: int
             x: samples (both positive and negative)
             y: targets
         """
-        if len(tf.shape(x)) < 2:
-            x = tf.reshape(x, (1, tf.shape(x)[0]))
+#         if len(tf.shape(x)) < 2:
+#             x = tf.reshape(x, (1, tf.shape(x)[0]))
         
         e = embedding_model(x)
 
