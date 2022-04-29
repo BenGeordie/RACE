@@ -11,7 +11,7 @@ import tensorflow as tf
 # %matplotlib inline
 import pdb
 import sys
-gpu_ind = -1
+gpu_ind = 2 # should be -1 for running on cpu
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_ind)
 #Config = tf.compat.v1.ConfigProto
