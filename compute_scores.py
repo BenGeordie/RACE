@@ -11,13 +11,14 @@ import tensorflow as tf
 # %matplotlib inline
 import pdb
 import sys
-gpu_ind = 2
+gpu_ind = -1
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_ind)
 #Config = tf.compat.v1.ConfigProto
 #Config.gpu_options.allow_growth = True
-gpus = tf.config.experimental.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(gpus[0], True)
+if gpu_ind != -1:
+   gpus = tf.config.experimental.list_physical_devices('GPU')
+   tf.config.experimental.set_memory_growth(gpus[0], True)
 
 from models import make_criteo_nn, make_criteo_embedding_model
 from lsh_functions import PStableHash
