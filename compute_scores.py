@@ -9,6 +9,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
 # %matplotlib inline
+import pdb
 import sys
 gpu_ind = 2
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -32,17 +33,18 @@ batch_size = 2000
 
 
 timestr = datetime.now().strftime("%Y%m%d-%H%M%S")
-rslt_dir = './score_'+timestr
+rslt_dir = './scores/score_'+timestr
 os.makedirs(rslt_dir)
 params_df = pd.DataFrame()
 
-train_ds = utils.load_csv('/home/sd73/DiverseNS/criteo_x1_1e6.csv',39)
+#train_ds = utils.load_csv('/home/sd73/DiverseNS/criteo_x1_1e6.csv',39)
+train_ds = utils.load_csv('/home/sd73/DiverseNS/data/train.csv',39)
 train_ds_batch = train_ds.batch(batch_size)
-
+train_ds_batch = train_ds_batch.prefetch(5)
 # Weighting function hyper parameters
-accept_first_n = 1000
-score_threshold = 0.0001
-accept_prob = 0.2
+accept_first_n = 10000
+score_threshold = 0.005
+accept_prob = 0.4
 race_embedding_model = make_criteo_embedding_model()
 hash_module = PStableHash(race_embedding_model.output_shape[1], num_hashes=repetitions * concatenations, p=p, seed=seed)
 race = Race(repetitions, concatenations, buckets, hash_module)
@@ -50,7 +52,7 @@ race = Race(repetitions, concatenations, buckets, hash_module)
 weight_fn = utils.weight_with_race(race, race_embedding_model, accept_first_n, score_threshold, accept_prob)
 
 filtered_weighted_train_ds = utils.weight_and_filter(train_ds_batch, weight_fn)
-
+#pdb.set_trace()
 tr_race_w = np.array(())
 race_scores = np.array(())
  
@@ -61,11 +63,8 @@ params_df = params_df.append(pd.DataFrame(row_vals).transpose())
 params_df.to_csv(rslt_dir+'/params.csv',header=header_nms,index=False)
 
 # shuffle and make batchwise data
-batch_data_train = filtered_weighted_train_ds.batch(batch_size)
-batch_data_train = batch_data_train.prefetch(20)
-
 t0 = datetime.now()
-for itr, (x,y,w) in enumerate(batch_data_train):  
+for itr, (x,y,w) in enumerate(filtered_weighted_train_ds): 
     print('**itr**',itr)
     t1 = datetime.now() 
     tr_race_w = np.append(tr_race_w,w.numpy().flatten())
@@ -78,14 +77,6 @@ for itr, (x,y,w) in enumerate(batch_data_train):
     if itr%10==0:
         np.save(rslt_dir+'/race_weights.npy',tr_race_w)
         np.save(rslt_dir+'/race_scores.npy',race_scores)
-        plt.figure(figsize=(12, 6), dpi=80)
-        plt.subplot(1,2,1)
-        plt.hist(race_scores,bins=100)
-        plt.title('race scores')
-        plt.subplot(1,2,2)
-        plt.hist(tr_race_w,bins=100)
-        plt.title('race weights')
-        plt.savefig(rslt_dir+'/plot.png')
 
 print('****TOTAL TIME****',datetime.now()-t0)
 

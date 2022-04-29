@@ -16,6 +16,7 @@ def load_csv(paths: List[str], sample_dim: int):
         paths, record_defaults=[tf.int64]+[tf.float32 for _ in range(sample_dim)],header=True)
     return data.map(lambda *line: (tf.stack(line[1:]), line[0]))
 
+
 # Untested
 def split_train_val_test(
     dataset: tf.data.Dataset, dataset_size: int, 
@@ -41,7 +42,6 @@ def split_train_val_test(
 
 
 # Untested
-@tf.function
 def weight_and_filter(dataset: tf.data.Dataset, weight_fn):
     """Weights each sample in the dataset using a weighting function, and filters out elements with 0 weight.
     Arguments:
@@ -57,8 +57,8 @@ def weight_and_filter(dataset: tf.data.Dataset, weight_fn):
         return (x, y, weights)
     dataset_map = dataset.map(map_fn)
     dataset_map_unbatch = dataset_map.unbatch()
-   
-    return dataset_map_unbatch.filter(lambda _x, _y, w: w > 0) 
+    return dataset_map_unbatch.filter(lambda _x, _y, w: w > 0).batch(512) # to do: pass batch_size to avoid hard coding 
+    #return dataset_map # to save scores/weights offline
 # Untested
 def weight_with_race(race: Race, embedding_model: tf.Module, accept_first_n: int, score_threshold: float, accept_prob: float):
     """Function factory for weighting samples with RACE. To be used in conjunction with weight_and_filter, defined above.
