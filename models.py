@@ -1,10 +1,11 @@
 from typing import List
 import tensorflow as tf
 import tensorflow.keras as keras
+import pdb
 
 # Tested lightly
 
-def make_criteo_nn(embedding_model: tf.Module, hidden_layer_dims: List[int]):
+def make_criteo_nn(embedding_model: tf.Module, hidden_layer_dims: List[int], lr: tf.float32):
     """Creates a neural network with a trainable embedding model as its base with hidden layers on top of it.
     The network trains to minimize BinaryCrossentropy loss and is evaluated with the AUC metric
     Arguments:
@@ -26,7 +27,7 @@ def make_criteo_nn(embedding_model: tf.Module, hidden_layer_dims: List[int]):
     outputs = layers(x)
     model = keras.Model(inputs, outputs)
 
-    optimizer = keras.optimizers.Adam()
+    optimizer = keras.optimizers.Adam(learning_rate=lr)
     metric_auc = keras.metrics.AUC()
     metric_logloss = keras.metrics.BinaryCrossentropy()
     metric_acc = keras.metrics.Accuracy()
@@ -46,14 +47,15 @@ def _embed(layer: tf.Module, inputs: tf.Tensor, index: int):
     """
     layer_inputs = tf.gather(inputs, [index], axis=-1)
 
-    if isinstance(layer, tf.keras.layers.Embedding):
-        layer_inputs = tf.math.mod(layer_inputs, layer.input_dim)
-        output_dim = layer.output_dim
+    #if isinstance(layer, tf.keras.layers.Embedding):
+   #     layer_inputs = tf.math.mod(layer_inputs, layer.input_dim)
+   #     output_dim = layer.output_dim
 
-    else: # The layer is a one-hot encoding layer
-        layer_inputs = tf.math.mod(layer_inputs, layer.num_tokens)
-        output_dim = layer.num_tokens
-
+   # else: # The layer is a one-hot encoding layer
+   #     layer_inputs = tf.math.mod(layer_inputs, layer.num_tokens)
+   #     output_dim = layer.num_tokens
+    
+    output_dim = layer.output_dim
     # return layer(layer_inputs)
     final_shape = (-1, output_dim)
     return tf.reshape(layer(layer_inputs), shape=final_shape)
@@ -65,51 +67,64 @@ def make_criteo_embedding_model():
 
     We use embedding layers for entries with > 100 unique values, one-hot encoding layers otherwise.
     For entries with >1000 entries, we have sqrt(unique values) embedding table entries.
+
+    Categorical feature levels for train data:
+    0 : 1460 | 1 : 558 | 2 : 413422 | 3 : 248541 | 4 : 305 | 5 : 21 | 6 : 12190 | 7 : 633 | 8 : 3 | 9 : 54710| 10 : 5348 | 11 : 409747 | 12 : 3180 | 13 : 27 | 14 : 12498 | 15 : 365809 | 16 : 10 | 17 : 4932 | 18 : 2094 | 19 : 4 |  20 : 397979 | 21 : 18 | 22 : 15 | 23 : 88606 | 24 : 96 | 25 : 64071  
+    input_dim = cat_level + 1 add one to consider OOV
+    output_dim = 6*(input_dim)**.025
     """
     embedding_layers = [
-        keras.layers.Embedding(input_dim=100, output_dim=70, 
+        keras.layers.Embedding(input_dim=1461, output_dim=38,
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=531, output_dim=50, 
+        keras.layers.Embedding(input_dim=559, output_dim=30, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=600, output_dim=100, 
+        keras.layers.Embedding(input_dim=413423, output_dim=153, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=400, output_dim=100, 
+        keras.layers.Embedding(input_dim=248542, output_dim=134, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=267, output_dim=50, 
+        keras.layers.Embedding(input_dim=306, output_dim=26, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.CategoryEncoding(num_tokens=15, output_mode='one_hot'),
-        keras.layers.Embedding(input_dim=110, output_dim=100, 
+        keras.layers.Embedding(input_dim=22, output_dim=13,
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=563, output_dim=50, 
+        keras.layers.Embedding(input_dim=12191, output_dim=64, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.CategoryEncoding(num_tokens=3, output_mode='one_hot'),
-        keras.layers.Embedding(input_dim=200, output_dim=100, 
+        keras.layers.Embedding(input_dim=634, output_dim=31,
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=200, output_dim=70, 
+        keras.layers.Embedding(input_dim=4, output_dim=8,
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=600, output_dim=100, 
+        keras.layers.Embedding(input_dim=54711, output_dim=92, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=150, output_dim=70, 
+        keras.layers.Embedding(input_dim=5349, output_dim=52, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.CategoryEncoding(num_tokens=26, output_mode='one_hot'),
-        keras.layers.Embedding(input_dim=300, output_dim=70, 
+        keras.layers.Embedding(input_dim=409748, output_dim=152, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=500, output_dim=100, 
+        keras.layers.Embedding(input_dim=3181, output_dim=46, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.CategoryEncoding(num_tokens=10, output_mode='one_hot'),
-        keras.layers.Embedding(input_dim=250, output_dim=70, 
+        keras.layers.Embedding(input_dim=28, output_dim=14, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=100, output_dim=70, 
+        keras.layers.Embedding(input_dim=12499, output_dim=64,
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.CategoryEncoding(num_tokens=3, output_mode='one_hot'),
-        keras.layers.Embedding(input_dim=600, output_dim=100, 
+        keras.layers.Embedding(input_dim=365900, output_dim=148, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.CategoryEncoding(num_tokens=15, output_mode='one_hot'),
-        keras.layers.CategoryEncoding(num_tokens=15, output_mode='one_hot'),
-        keras.layers.Embedding(input_dim=200, output_dim=100, 
+        keras.layers.Embedding(input_dim=11, output_dim=11, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.CategoryEncoding(num_tokens=69, output_mode='one_hot'),
-        keras.layers.Embedding(input_dim=200, output_dim=100, 
+        keras.layers.Embedding(input_dim=4933, output_dim=51,   
+                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
+        keras.layers.Embedding(input_dim=2095, output_dim=41,  
+                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
+        keras.layers.Embedding(input_dim=5, output_dim=9,
+                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
+        keras.layers.Embedding(input_dim=397980, output_dim=151, 
+                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
+        keras.layers.Embedding(input_dim=19, output_dim=13,
+                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
+        keras.layers.Embedding(input_dim=16, output_dim=12,
+                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
+        keras.layers.Embedding(input_dim=88607, output_dim=104, 
+                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
+        keras.layers.Embedding(input_dim=97, output_dim=19,
+                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
+        keras.layers.Embedding(input_dim=64072, output_dim=96, 
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
     ]
 
