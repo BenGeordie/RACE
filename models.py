@@ -5,7 +5,7 @@ import pdb
 
 # Tested lightly
 
-def make_criteo_nn(embedding_model: tf.Module, hidden_layer_dims: List[int], lr: tf.float32):
+def make_clickthrough_nn(embedding_model: tf.Module, hidden_layer_dims: List[int], lr: tf.float32):
     """Creates a neural network with a trainable embedding model as its base with hidden layers on top of it.
     The network trains to minimize BinaryCrossentropy loss and is evaluated with the AUC metric
     Arguments:
@@ -17,15 +17,16 @@ def make_criteo_nn(embedding_model: tf.Module, hidden_layer_dims: List[int], lr:
     
     final_layer = keras.layers.Dense(1, activation=tf.nn.sigmoid)
 
-    layers = keras.Sequential([
+    model = keras.Sequential([
+        embedding_model,
         *hidden_layers,
         final_layer
     ])
 
-    inputs = keras.Input(shape=(39,), dtype=tf.float32)
-    x = embedding_model(inputs)
-    outputs = layers(x)
-    model = keras.Model(inputs, outputs)
+    # inputs = keras.Input(shape=(39,), dtype=tf.float32)
+    # x = embedding_model(inputs)
+    # outputs = layers(x)
+    # model = keras.Model(inputs, outputs)
 
     optimizer = keras.optimizers.Adam(learning_rate=lr)
     metric_auc = keras.metrics.AUC()
@@ -65,67 +66,101 @@ def make_criteo_embedding_model():
     Creates a TensorFlow model that takes in samples from the Criteo clickthrough dataset
     and embeds the categorical entries.
 
-    We use embedding layers for entries with > 100 unique values, one-hot encoding layers otherwise.
-    For entries with >1000 entries, we have sqrt(unique values) embedding table entries.
-
-    Categorical feature levels for train data:
+    Number of unique values for each categorical feature in train data:
     0 : 1460 | 1 : 558 | 2 : 413422 | 3 : 248541 | 4 : 305 | 5 : 21 | 6 : 12190 | 7 : 633 | 8 : 3 | 9 : 54710| 10 : 5348 | 11 : 409747 | 12 : 3180 | 13 : 27 | 14 : 12498 | 15 : 365809 | 16 : 10 | 17 : 4932 | 18 : 2094 | 19 : 4 |  20 : 397979 | 21 : 18 | 22 : 15 | 23 : 88606 | 24 : 96 | 25 : 64071  
     input_dim = cat_level + 1 add one to consider OOV
     output_dim = 6*(input_dim)**.025
     """
+    n_uniques = [
+        1460, # 0 
+        558, # 1
+        413422, # 2
+        248541, # 3
+        305, # 4
+        21, # 5
+        12190, # 6
+        633, # 7
+        3, # 8
+        54710, # 9
+        5348, # 10
+        409747, # 11
+        3180, # 12
+        27, # 13
+        12498, # 14
+        365809, # 15
+        10, # 16
+        4932, # 17
+        2094, # 18
+        4, # 19
+        397979, # 20 
+        18, # 21
+        15, # 22
+        88606, # 23
+        96, # 24
+        64071, #25
+    ]
+
     embedding_layers = [
-        keras.layers.Embedding(input_dim=1461, output_dim=38,
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=559, output_dim=30, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=413423, output_dim=153, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=248542, output_dim=134, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=306, output_dim=26, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=22, output_dim=13,
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=12191, output_dim=64, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=634, output_dim=31,
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=4, output_dim=8,
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=54711, output_dim=92, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=5349, output_dim=52, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=409748, output_dim=152, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=3181, output_dim=46, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=28, output_dim=14, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=12499, output_dim=64,
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=365900, output_dim=148, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=11, output_dim=11, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=4933, output_dim=51,   
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=2095, output_dim=41,  
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=5, output_dim=9,
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=397980, output_dim=151, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=19, output_dim=13,
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=16, output_dim=12,
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=88607, output_dim=104, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=97, output_dim=19,
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
-        keras.layers.Embedding(input_dim=64072, output_dim=96, 
-                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.)),
+        keras.layers.Embedding(input_dim=n_unique + 1, output_dim=6 * (n_unique ** 0.25),   
+                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.))
+        for n_unique in n_uniques
+    ]
+
+    inputs = keras.Input(shape=(39,), dtype=tf.float32)
+    int_inputs = tf.reshape(tf.gather(inputs, range(0,13), axis=-1), (-1, 13))
+    outputs = keras.layers.Concatenate()([
+        # First 13 entries in a Criteo sample are integral values.
+        int_inputs,
+        # The next 26 are categorical values that need to be embedded.
+        *[_embed(layer, inputs, i + 13) for i, layer in enumerate(embedding_layers)]
+    ])
+
+    return keras.Model(inputs, outputs)
+
+def make_avazu_embedding_model():
+    """
+    Creates a TensorFlow model that takes in samples from the Avazu clickthrough dataset
+    and embeds the categorical entries.
+
+    Categorical feature levels for train data:
+    # TODO FIX THIS
+    0 : 1460 | 1 : 558 | 2 : 413422 | 3 : 248541 | 4 : 305 | 5 : 21 | 6 : 12190 | 7 : 633 | 8 : 3 | 9 : 54710| 10 : 5348 | 11 : 409747 | 12 : 3180 | 13 : 27 | 14 : 12498 | 15 : 365809 | 16 : 10 | 17 : 4932 | 18 : 2094 | 19 : 4 |  20 : 397979 | 21 : 18 | 22 : 15 | 23 : 88606 | 24 : 96 | 25 : 64071  
+    input_dim = cat_level + 1 add one to consider OOV
+    output_dim = 40 based on results from https://arxiv.org/pdf/1904.04447.pdf
+    """
+    n_uniques = [
+        1460, # 0 
+        558, # 1
+        413422, # 2
+        248541, # 3
+        305, # 4
+        21, # 5
+        12190, # 6
+        633, # 7
+        3, # 8
+        54710, # 9
+        5348, # 10
+        409747, # 11
+        3180, # 12
+        27, # 13
+        12498, # 14
+        365809, # 15
+        10, # 16
+        4932, # 17
+        2094, # 18
+        4, # 19
+        397979, # 20 
+        18, # 21
+        15, # 22
+        88606, # 23
+        96, # 24
+        64071, #25
+    ]
+
+    embedding_layers = [
+        keras.layers.Embedding(input_dim=n_unique + 1, output_dim=6 * (n_unique ** 0.25),   
+                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.))
+        for n_unique in n_uniques
     ]
 
     inputs = keras.Input(shape=(39,), dtype=tf.float32)

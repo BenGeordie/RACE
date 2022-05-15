@@ -2,7 +2,7 @@ import utils
 import importlib
 import os
 from datetime import datetime 
-from models import make_criteo_nn, make_criteo_embedding_model
+from models import make_clickthrough_nn, make_criteo_embedding_model
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -26,7 +26,7 @@ val_ds = utils.load_csv('valid_contig.csv',39)
 lr = 0.001
 nn_embedding_model = make_criteo_embedding_model()
 hidden_layer_dims = [800, 800, 800, 800]
-nn = make_criteo_nn(nn_embedding_model, hidden_layer_dims, lr)
+nn = make_clickthrough_nn(nn_embedding_model, hidden_layer_dims, lr)
 
 seed = 314150
 n_epoch = 2

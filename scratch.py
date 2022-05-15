@@ -1,5 +1,5 @@
 import utils
-from models import make_criteo_nn, make_criteo_embedding_model
+from models import make_clickthrough_nn, make_criteo_embedding_model
 from lsh_functions import PStableHash
 from race import Race
 
@@ -33,7 +33,7 @@ def sample_pipeline():
 
     # Dimensions of neural network hidden layers.
     hidden_layer_dims = [10_000, 10_000, 10_000]
-    nn = make_criteo_nn(embedding_model, hidden_layer_dims)
+    nn = make_clickthrough_nn(embedding_model, hidden_layer_dims)
     
     # Training hyper parameters
     batch_size = 128
