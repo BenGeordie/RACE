@@ -67,7 +67,9 @@ def make_criteo_embedding_model(vocab_files: List[str], vocab_sizes: List[int]):
     # Assumes we store vocabularies in text files.
     embedding_layers = [
         keras.layers.Sequential([
-            keras.layers.IntegerLookup(vocabulary=vocab_file),
+            keras.layers.IntegerLookup(
+                vocabulary=vocab_file, 
+                num_oov_indices=1),
             keras.layers.Embedding(
                 input_dim=vocab_size, 
                 output_dim=math.ceil(6 * math.pow(vocab_size, 0.25)),
