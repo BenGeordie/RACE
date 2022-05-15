@@ -4,8 +4,11 @@ from race import Race
 import pdb
 
 # Tested lightly
-def load_csv(paths: List[str], sample_dim: int):
-    """Loads CSV files and creates a dataset of (sample, target) tuples.
+def load_criteo_csv(paths: List[str]):
+    """Loads criteo CSV and creates a dataset of (sample, target) tuples.
+
+    Criteo data has label in first column, followed by 39 continuous and categorical features.
+
     Arguments:
         paths: List of strings. Paths to CSV files.
         sample_dim: integer. The dimension of each sample in the dataset.
@@ -13,7 +16,38 @@ def load_csv(paths: List[str], sample_dim: int):
         A TensorFlow dataset of (sample, target) tuples.
     """
     data = tf.data.experimental.CsvDataset(
-        paths, record_defaults=[tf.int64]+[tf.float32 for _ in range(sample_dim)],header=True)
+        paths, record_defaults=[tf.int64]+[tf.float32 for _ in range(39)],header=True)
+    return data.map(lambda *line: (tf.stack(line[1:]), line[0]))
+
+def load_avazu_csv(paths: List[str]):
+    """Loads avazu CSV and creates a dataset of (sample, target) tuples.
+
+    Avazu data has id in first column, label in second column, followed by 22 categorical features,
+    but we preprocessed the dataset to discard the first column.
+
+    Arguments:
+        paths: List of strings. Paths to CSV files.
+        sample_dim: integer. The dimension of each sample in the dataset.
+    Returns: 
+        A TensorFlow dataset of (sample, target) tuples.
+    """
+    data = tf.data.experimental.CsvDataset(
+        paths, record_defaults=[tf.int64]+[tf.float32 for _ in range(22)],header=True)
+    return data.map(lambda *line: (tf.stack(line[1:]), line[0]))
+
+def load_movielens_csv(paths: List[str]):
+    """Loads movielens CSV and creates a dataset of (sample, target) tuples.
+
+    Movielens data has label in first column, followed by 3 columns of categorical features.
+
+    Arguments:
+        paths: List of strings. Paths to CSV files.
+        sample_dim: integer. The dimension of each sample in the dataset.
+    Returns: 
+        A TensorFlow dataset of (sample, target) tuples.
+    """
+    data = tf.data.experimental.CsvDataset(
+        paths, record_defaults=[tf.int64]+[tf.float32 for _ in range(3)],header=True)
     return data.map(lambda *line: (tf.stack(line[1:]), line[0]))
 
 

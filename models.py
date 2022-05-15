@@ -71,7 +71,7 @@ def make_criteo_embedding_model():
     input_dim = cat_level + 1 add one to consider OOV
     output_dim = 6*(input_dim)**.025
     """
-    n_uniques = [
+    vocab_sizes = [
         1460, # 0 
         558, # 1
         413422, # 2
@@ -101,9 +101,10 @@ def make_criteo_embedding_model():
     ]
 
     embedding_layers = [
-        keras.layers.Embedding(input_dim=n_unique + 1, output_dim=6 * (n_unique ** 0.25),   
+        # input_dim is size + 1 including OOV.
+        keras.layers.Embedding(input_dim=size + 1, output_dim=6 * (size ** 0.25),   
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.))
-        for n_unique in n_uniques
+        for size in vocab_sizes
     ]
 
     inputs = keras.Input(shape=(39,), dtype=tf.float32)
@@ -123,53 +124,75 @@ def make_avazu_embedding_model():
     and embeds the categorical entries.
 
     Categorical feature levels for train data:
-    # TODO FIX THIS
-    0 : 1460 | 1 : 558 | 2 : 413422 | 3 : 248541 | 4 : 305 | 5 : 21 | 6 : 12190 | 7 : 633 | 8 : 3 | 9 : 54710| 10 : 5348 | 11 : 409747 | 12 : 3180 | 13 : 27 | 14 : 12498 | 15 : 365809 | 16 : 10 | 17 : 4932 | 18 : 2094 | 19 : 4 |  20 : 397979 | 21 : 18 | 22 : 15 | 23 : 88606 | 24 : 96 | 25 : 64071  
+    0: 240 | 1: 7 | 2: 7 | 3: 4622 | 4: 7306 | 5: 25 | 6: 8217 | 7: 526 | 8: 35 | 9: 2329634 | 
+    10: 6011539 | 11: 8066 | 12: 5 | 13: 4 | 14: 2610 |15: 8 | 16: 9 | 17: 434 | 18: 4 | 19: 68 | 
+    20: 172 | 21: 60
     input_dim = cat_level + 1 add one to consider OOV
     output_dim = 40 based on results from https://arxiv.org/pdf/1904.04447.pdf
     """
-    n_uniques = [
-        1460, # 0 
-        558, # 1
-        413422, # 2
-        248541, # 3
-        305, # 4
-        21, # 5
-        12190, # 6
-        633, # 7
-        3, # 8
-        54710, # 9
-        5348, # 10
-        409747, # 11
-        3180, # 12
-        27, # 13
-        12498, # 14
-        365809, # 15
-        10, # 16
-        4932, # 17
-        2094, # 18
-        4, # 19
-        397979, # 20 
-        18, # 21
-        15, # 22
-        88606, # 23
-        96, # 24
-        64071, #25
+    vocab_sizes = [
+        240, # 0, 
+        7, # 1
+        7, # 2
+        4622, # 3
+        7306, # 4
+        25, # 5
+        8217, # 6
+        526, # 7
+        35, # 8
+        2329634, # 9
+        6011539, # 10
+        8066, # 11
+        5, # 12
+        4, # 13
+        2610, # 14
+        8, # 15
+        9, # 16
+        434, # 17
+        4, # 18
+        68, # 19
+        172, # 20
+        60, # 21
     ]
 
     embedding_layers = [
-        keras.layers.Embedding(input_dim=n_unique + 1, output_dim=6 * (n_unique ** 0.25),   
+        # input_dim is size + 1 including OOV.
+        keras.layers.Embedding(input_dim=size + 1, output_dim=40,   
                                 embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.))
-        for n_unique in n_uniques
+        for size in vocab_sizes
     ]
 
-    inputs = keras.Input(shape=(39,), dtype=tf.float32)
-    int_inputs = tf.reshape(tf.gather(inputs, range(0,13), axis=-1), (-1, 13))
+    inputs = keras.Input(shape=(22,), dtype=tf.float32)
     outputs = keras.layers.Concatenate()([
-        # First 13 entries in a Criteo sample are integral values.
-        int_inputs,
-        # The next 26 are categorical values that need to be embedded.
-        *[_embed(layer, inputs, i + 13) for i, layer in enumerate(embedding_layers)]
+        # 22 categorical features that need to be embedded.
+        *[_embed(layer, inputs, i) for i, layer in enumerate(embedding_layers)]
+    ])
+
+    return keras.Model(inputs, outputs)
+
+def make_movielens_embedding_model():
+    """
+    Creates a TensorFlow model that takes in samples from the Movielens clickthrough dataset
+    and embeds the categorical entries.
+
+    Categorical feature levels for train data:
+    0: 16975 | 1: 23604 | 2: 49657
+    input_dim = cat_level + 1 add one to consider OOV
+    output_dim = 10 based on https://github.com/openbenchmark/BARS/tree/master/ctr_prediction/datasets/MovieLens
+    """
+    vocab_sizes = [16975, 23604, 49657]
+
+    embedding_layers = [
+        # input_dim is size + 1 including OOV.
+        keras.layers.Embedding(input_dim=size + 1, output_dim=10,   
+                                embeddings_initializer=tf.keras.initializers.RandomNormal(stddev=1.))
+        for size in vocab_sizes
+    ]
+
+    inputs = keras.Input(shape=(3,), dtype=tf.float32)
+    outputs = keras.layers.Concatenate()([
+        # 22 categorical features that need to be embedded.
+        *[_embed(layer, inputs, i) for i, layer in enumerate(embedding_layers)]
     ])
 
     return keras.Model(inputs, outputs)

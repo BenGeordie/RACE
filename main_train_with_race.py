@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import utils
 import importlib
 import os
-from models import make_criteo_nn, make_criteo_embedding_model
+from models import make_avazu_embedding_model, make_clickthrough_nn, make_criteo_embedding_model, make_movielens_embedding_model
 from lsh_functions import PStableHash
 from race import Race
 import pdb
@@ -67,17 +67,27 @@ if __name__ == '__main__':
     os.makedirs(rslt_dir)
 
     if args.data=='criteo':
-         train_ds = utils.load_csv('/DiverseNS/data/train.csv',39)
-         val_ds = utils.load_csv('/DiverseNS/data/valid.csv',39)
-         test_ds = utils.load_csv('/DiverseNS/data/test.csv',39)
+        train_ds = utils.load_criteo_csv('/DiverseNS/data/train.csv')
+        val_ds = utils.load_criteo_csv('/DiverseNS/data/valid.csv')
+        test_ds = utils.load_criteo_csv('/DiverseNS/data/test.csv')
+        make_embedding_model = make_criteo_embedding_model
+    if args.data=='avazu':
+        train_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/train_contig_noid.csv')
+        val_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/valid_contig_noid.csv')
+        test_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/test_contig_noid.csv')
+        make_embedding_model = make_avazu_embedding_model
+    if args.data=='movielens':
+        train_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/train_contig.csv')
+        val_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/valid_contig.csv')
+        test_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/test_contig.csv')
+        make_embedding_model = make_movielens_embedding_model
         
-
     train_ds_batch = train_ds.batch(batch_size)
     train_ds_batch = train_ds_batch.prefetch(2)
     batch_data_val = val_ds.batch(batch_size)
     batch_data_test = test_ds.batch(batch_size)
 
-    race_embedding_model = make_criteo_embedding_model()
+    race_embedding_model = make_embedding_model()
     hash_module = PStableHash(race_embedding_model.output_shape[1], num_hashes=repetitions * concatenations, p=p, seed=seed)
     race = Race(repetitions, concatenations, buckets, hash_module)
 
@@ -85,9 +95,9 @@ if __name__ == '__main__':
     filtered_weighted_train_ds = utils.weight_and_filter(train_ds_batch, weight_fn)
 
     # Dimensions of neural network hidden layers.
-    nn_embedding_model = make_criteo_embedding_model()
+    nn_embedding_model = make_embedding_model()
     hidden_layer_dims = [args.h]*args.n
-    nn = make_criteo_nn(nn_embedding_model, hidden_layer_dims, lr)
+    nn = make_clickthrough_nn(nn_embedding_model, hidden_layer_dims, lr)
 
 
     val_df = pd.DataFrame()
@@ -106,7 +116,7 @@ if __name__ == '__main__':
             _ = nn.train_on_batch(x,y,wght)
             t2 = datetime.now()
             train_time = (t2-t1) if tot_itr==0 else train_time + (t2-t1)
-            if tot_itr%eval_step==0:
+            if tot_itr%eval_step==0 and tot_itr != 0:
                 print('   Iteration # =',tot_itr)
                 tv1 = datetime.now()
                 lst_val = nn.evaluate(batch_data_val) # evaluate on val data
