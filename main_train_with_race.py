@@ -17,11 +17,11 @@ import pdb
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # training params
-    parser.add_argument("--epoch", action="store", default=2, type=int)
+    parser.add_argument("--epoch", action="store", default=4, type=int)
     parser.add_argument("--batch_size", action="store", default=512, type=int)
     parser.add_argument("--eval_step", action="store", default=5000, type=int)
     parser.add_argument("--lr", action="store", default=0.001, type=float)
-    parser.add_argument("--h", action="store", default=1024, type=int, help='hidden layer size')
+    parser.add_argument("--h", action="store", default=800, type=int, help='hidden layer size')
     parser.add_argument("--n", action="store", default=4, type=int, help='number of hidden layers')
     parser.add_argument("--gpu", action="store", required=True, type=int)
     parser.add_argument("--seed", action="store", default=314150, type=int)
@@ -67,21 +67,25 @@ if __name__ == '__main__':
     os.makedirs(rslt_dir)
 
     if args.data=='criteo':
-        train_ds = utils.load_criteo_csv('/DiverseNS/data/train.csv')
-        val_ds = utils.load_criteo_csv('/DiverseNS/data/valid.csv')
-        test_ds = utils.load_criteo_csv('/DiverseNS/data/test.csv')
+        train_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/data/train.csv')
+        val_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/data/valid.csv')
+        test_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/data/test.csv')
         make_embedding_model = make_criteo_embedding_model
+
     if args.data=='avazu':
         train_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/train_contig_noid.csv')
         val_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/valid_contig_noid.csv')
         test_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/test_contig_noid.csv')
         make_embedding_model = make_avazu_embedding_model
+
     if args.data=='movielens':
         train_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/train_contig.csv')
         val_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/valid_contig.csv')
         test_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/test_contig.csv')
         make_embedding_model = make_movielens_embedding_model
         
+
+
     train_ds_batch = train_ds.batch(batch_size)
     train_ds_batch = train_ds_batch.prefetch(2)
     batch_data_val = val_ds.batch(batch_size)
@@ -101,16 +105,18 @@ if __name__ == '__main__':
 
 
     val_df = pd.DataFrame()
-    tr_race_w = np.array(())
-
+    sampling_w = np.array(())
+    
+    t00 = datetime.now()
     tot_itr = 0
     for ep in range(n_epoch):
         print('Epoch # =',ep)
         # in each epoch loop over batches
         for itr, (x,y,wght) in enumerate(filtered_weighted_train_ds):
+            if tot_itr>150000:
+                break
             if ep==0:
-                tr_race_w = np.append(tr_race_w,wght.numpy().flatten())
-            
+                sampling_w = np.append(sampling_w,wght.numpy().flatten())
             t1 = datetime.now()
             _ = nn.train_on_batch(x,y,wght)
             t2 = datetime.now()
@@ -155,13 +161,13 @@ if __name__ == '__main__':
                 plt.title(nn.metrics_names[3])
                 plt.xlabel('iteration')
                 plt.subplot(2,2,4)
-                plt.hist(tr_race_w,bins=100)
+                plt.hist(sampling_w,bins=100)
                 plt.title('race weights')
                 plt.savefig(rslt_dir+'/plot.png')
 
             tot_itr += 1
-
-    run_time = train_time + val_time
+    t0f = datetime.now() 
+    run_time = train_time + val_time + test_time
     print('Total run time:', str(run_time))
     print('Train time =', str(train_time))
     val_df.reset_index(drop=True, inplace=True)
@@ -169,10 +175,18 @@ if __name__ == '__main__':
     val_df.loc[0,'final_train_time'] = train_time
     val_df['final_run_time'] = np.nan
     val_df.loc[0,'final_run_time'] = run_time
-    val_df.to_csv(rslt_dir+'/val_metrics_final.csv',header=header_nms+['final_train_time','final_run_time'],index=False)
+    val_df['total_time'] = np.nan
+    val_df.loc[0,'total_time'] = t0f - t00
+    val_df['w_morethan_1'] = np.nan
+    val_df.loc[0,'w_morethan_1'] = (sampling_w>1).sum()
+    val_df['w_1'] = np.nan
+    val_df.loc[0,'w_1'] = (sampling_w==1).sum()
+    val_df['train_size'] = np.nan
+    val_df.loc[0,'train_size'] = sampling_w.size
+    val_df.to_csv(rslt_dir+'/val_metrics_final.csv',header=header_nms+['final_train_time','final_run_time','total_time','w_morethan_1','w_1','train_size'],index=False)
     nn.save_weights(rslt_dir+'/model_weights_final.h5')
-    val_df.columns = header_nms+['final_train_time','final_run_time']
-    np.save(rslt_dir+'/train_race_weights.npy',tr_race_w)
+    val_df.columns = header_nms+['final_train_time','final_run_time','total_time','w_morethan_1','w_1','train_size']
+    np.save(rslt_dir+'/train_race_weights.npy',sampling_w)
 
     # Final plots 
     plt.figure(figsize=(12, 10), dpi=80)
@@ -189,6 +203,6 @@ if __name__ == '__main__':
     plt.title(nn.metrics_names[3])
     plt.xlabel('iteration')
     plt.subplot(2,2,4)
-    plt.hist(tr_race_w,bins=100)
+    plt.hist(sampling_w,bins=100)
     plt.title('race weights')
     plt.savefig(rslt_dir+'/plot.png')
