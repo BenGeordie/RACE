@@ -110,13 +110,12 @@ if __name__ == '__main__':
         for itr, (x,y,wght) in enumerate(filtered_weighted_train_ds):
             if ep==0:
                 tr_race_w = np.append(tr_race_w,wght.numpy().flatten())
-            if itr==0:
-                race.score(race_embedding_model(x))
+            
             t1 = datetime.now()
             _ = nn.train_on_batch(x,y,wght)
             t2 = datetime.now()
             train_time = (t2-t1) if tot_itr==0 else train_time + (t2-t1)
-            if tot_itr%eval_step==0 and tot_itr != 0:
+            if tot_itr%eval_step==0:
                 print('   Iteration # =',tot_itr)
                 tv1 = datetime.now()
                 lst_val = nn.evaluate(batch_data_val) # evaluate on val data
