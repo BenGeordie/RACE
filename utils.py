@@ -1,6 +1,7 @@
 from typing import List
 import tensorflow as tf
 from race import Race
+from lsh_functions import PStableHash
 import pdb
 
 # Tested lightly
@@ -155,3 +156,11 @@ def weight_with_race(race: Race, embedding_model: tf.Module, accept_first_n: int
 
     return _weight
 
+def make_default_race(embedding_model):
+    repetitions = 100
+    concatenations = 1
+    buckets = 10_000
+    p = 2.0
+    seed = 314150
+    hash_module = PStableHash(embedding_model.output_shape[1], num_hashes=repetitions * concatenations, p=p, seed=seed)
+    return Race(repetitions, concatenations, buckets, hash_module)

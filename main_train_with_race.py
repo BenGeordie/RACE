@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     
     timestr = datetime.now().strftime("%Y%m%d-%H%M%S")
-    rslt_dir = './final_results/rslt_end2end_train_race_'+timestr
+    rslt_dir = './final_results/rslt_end2end_train_race_thresh' + args.thrsh + '_accept' + args.prob + '_' + timestr
     os.makedirs(rslt_dir)
 
     if args.data=='criteo':
