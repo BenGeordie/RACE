@@ -92,4 +92,4 @@ plt.show()
 
 
 #TODO: Range of taus for movielens: np.arange(0.04, 0.065, 0.002)
-#TODO: Range of taus for avazu: np.arange(0.04, 0.065, 0.002)
+#TODO: Range of taus for avazu: np.arange(0.01, 0.015, 0.0005)
