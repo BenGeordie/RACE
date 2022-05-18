@@ -1,18 +1,9 @@
 import tensorflow as tf
 from race import Race
 from lsh_functions import PStableHash
-from utils import load_avazu_csv, load_criteo_csv, load_movielens_csv
+from utils import load_avazu_csv, load_criteo_csv, load_movielens_csv, make_default_race
 from models import make_avazu_embedding_model, make_criteo_embedding_model, make_movielens_embedding_model
 import numpy as np
-
-def make_default_race(embedding_model):
-    repetitions = 100
-    concatenations = 1
-    buckets = 10_000
-    p = 2.0
-    seed = 314150
-    hash_module = PStableHash(embedding_model.output_shape[1], num_hashes=repetitions * concatenations, p=p, seed=seed)
-    return Race(repetitions, concatenations, buckets, hash_module)
 
 def compute_scores(dataset: tf.data.Dataset, save_path: str, embedding_model: tf.Module):
     race = make_default_race(embedding_model)
@@ -39,16 +30,16 @@ def compute_scores(dataset: tf.data.Dataset, save_path: str, embedding_model: tf
     
     np.save(save_path + "_last", all_scores)
 
-# criteo_base = "AAAAA"
-# criteo_train = load_criteo_csv(criteo_base + "train_.csv")
-# criteo_embed = make_criteo_embedding_model()
-# compute_scores(criteo_train, "")
+criteo_base = "AAAAA"
+criteo_train = load_criteo_csv(criteo_base + "train_.csv")
+criteo_embed = make_criteo_embedding_model()
+compute_scores(criteo_train, "")
 
-# print("Avazu!")
-# avazu_base = "/Users/benitogeordie/Downloads/Avazu_x4/"
-# avazu_train = load_avazu_csv(avazu_base + "train_contig_noid.csv")
-# avazu_embed = make_avazu_embedding_model()
-# compute_scores(avazu_train, avazu_base + "scores", avazu_embed)
+print("Avazu!")
+avazu_base = "/Users/benitogeordie/Downloads/Avazu_x4/"
+avazu_train = load_avazu_csv(avazu_base + "train_contig_noid.csv")
+avazu_embed = make_avazu_embedding_model()
+compute_scores(avazu_train, avazu_base + "scores", avazu_embed)
 
 # print("Movielens!")
 # movielens_base = "/Users/benitogeordie/Downloads/Movielenslatest_x1/"
@@ -91,5 +82,5 @@ plt.show()
 # print(get_sampling_rate(scores, keep_first_n=10_000, threshold=0.05, accept_prob=0.1))
 
 
-#TODO: Range of taus for movielens: np.arange(0.04, 0.065, 0.002)
-#TODO: Range of taus for avazu: np.arange(0.01, 0.015, 0.0005)
+# #TODO: Range of taus for movielens: np.arange(0.04, 0.065, 0.002)
+# #TODO: Range of taus for avazu: np.arange(0.01, 0.015, 0.0005)
