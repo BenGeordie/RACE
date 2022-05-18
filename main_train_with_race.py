@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     
     timestr = datetime.now().strftime("%Y%m%d-%H%M%S")
-    rslt_dir = './final_results/rslt_end2end_train_race_'+timestr
+    rslt_dir = './final_results/rslt_end2end_train_race_'+args.data+'_thresh' + str(args.thrsh) + '_accept' + str(args.prob) + '_' + timestr
     os.makedirs(rslt_dir)
 
     if args.data=='criteo':
@@ -73,16 +73,17 @@ if __name__ == '__main__':
         make_embedding_model = make_criteo_embedding_model
 
     if args.data=='avazu':
-        train_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/train_contig_noid.csv')
-        val_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/valid_contig_noid.csv')
-        test_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/test_contig_noid.csv')
+        train_ds = utils.load_avazu_csv('/home/bg31/RACE/Avazu/data/train_contig_noid.csv')
+        val_ds = utils.load_avazu_csv('/home/bg31/RACE/Avazu/data/valid_contig_noid.csv')
+        test_ds = utils.load_avazu_csv('/home/bg31/RACE/Avazu/data/test_contig_noid.csv')
         make_embedding_model = make_avazu_embedding_model
-    if args.data=='movielens':
-        train_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/train_contig.csv')
-        val_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/valid_contig.csv')
-        test_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/test_contig.csv')
-        make_embedding_model = make_movielens_embedding_model
 
+    if args.data=='movielens':
+        train_ds = utils.load_movielens_csv('/home/bg31/RACE/Movielens/data/train_contig.csv')
+        val_ds = utils.load_movielens_csv('/home/bg31/RACE/Movielens/data/valid_contig.csv')
+        test_ds = utils.load_movielens_csv('/home/bg31/RACE/Movielens/data/test_contig.csv')
+        make_embedding_model = make_movielens_embedding_model
+        
 
 
     train_ds_batch = train_ds.batch(batch_size)
@@ -90,7 +91,7 @@ if __name__ == '__main__':
     batch_data_val = val_ds.batch(batch_size)
     batch_data_test = test_ds.batch(batch_size)
 
-    race_embedding_model = make_criteo_embedding_model()
+    race_embedding_model = make_embedding_model()
     hash_module = PStableHash(race_embedding_model.output_shape[1], num_hashes=repetitions * concatenations, p=p, seed=seed)
     race = Race(repetitions, concatenations, buckets, hash_module)
 
@@ -98,9 +99,9 @@ if __name__ == '__main__':
     filtered_weighted_train_ds = utils.weight_and_filter(train_ds_batch, weight_fn)
 
     # Dimensions of neural network hidden layers.
-    nn_embedding_model = make_criteo_embedding_model()
+    nn_embedding_model = make_embedding_model()
     hidden_layer_dims = [args.h]*args.n
-    nn = make_criteo_nn(nn_embedding_model, hidden_layer_dims, lr)
+    nn = make_clickthrough_nn(nn_embedding_model, hidden_layer_dims, lr)
 
 
     val_df = pd.DataFrame()

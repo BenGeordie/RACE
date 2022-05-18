@@ -27,6 +27,7 @@ class Race(tf.Module):
         self._hash_module = hash_module
         self._arrays = tf.Variable(np.zeros(shape=(self._r, self._b)), dtype=tf.float64)
         self._n = tf.Variable(0, dtype=tf.int64)
+        self._initial_n = tf.Variable(0, dtype=tf.int64)
 
     @tf.function(
         input_signature=[tf.TensorSpec(shape=None, dtype=tf.int64)])
@@ -92,12 +93,14 @@ class Race(tf.Module):
         update = tf.ones(shape=tf.shape(indices)[:-1], dtype=tf.float64)
         self._arrays.assign(tf.tensor_scatter_nd_add(self._arrays, indices, update))
         
+        self._initial_n.assign(self._n)
+
         # This assumes that dim-0 is the number of samples. 
         # This is a safe assumption because our embedding model will always output a 2D array,
         # even if the samples are not batched.
         self._n.assign(self._n + tf.cast(tf.shape(x)[0], dtype=tf.int64))
         
-        return score
+        return score, self._initial_n
 
     def samples_seen(self):
         """Returns the number of samples seen so far.

@@ -20,7 +20,7 @@ if gpu_ind != -1:
    gpus = tf.config.experimental.list_physical_devices('GPU')
    tf.config.experimental.set_memory_growth(gpus[0], True)
 
-from models import make_criteo_nn, make_criteo_embedding_model
+from models import make_clickthrough_nn, make_criteo_embedding_model
 from lsh_functions import PStableHash
 from race import Race
 
