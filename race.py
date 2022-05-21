@@ -5,7 +5,7 @@ import pdb
 
 # Tested lightly
 class Race(tf.Module):
-    def __init__(self, repetitions: int, concatenations: int, buckets: int, hash_module: tf.Module):
+    def __init__(self, repetitions: int, concatenations: int, buckets: int, hash_module: tf.Module, total_samples: int):
         """Race Constructor.
         Arguments:
             repetitions: integer. Number of rows in RACE.
@@ -26,6 +26,7 @@ class Race(tf.Module):
         self._b = buckets
         self._hash_module = hash_module
         self._arrays = tf.Variable(np.zeros(shape=(self._r, self._b)), dtype=tf.float64)
+        self._total_samples = tf.constant(total_samples, dtype=tf.int64)
         self._n = tf.Variable(0, dtype=tf.int64)
         self._initial_n = tf.Variable(0, dtype=tf.int64)
 
@@ -84,9 +85,8 @@ class Race(tf.Module):
         # The score for each sample is the average count across every row
         # divided by the number of elements that had been previously indexed.
         score = tf.reduce_mean(tf.gather_nd(self._arrays, indices), axis=-1)
-        # Prevent division by 0.
-        one_over_n = tf.math.reciprocal_no_nan(tf.cast(self._n, dtype=tf.float64))
-        score *= one_over_n
+        # Normalize
+        score /= tf.cast(self._total_samples, dtype=tf.float64) 
         
         # For each sample, increment the counters at the locations that they are hashed to.
         # Shape is n_samples x repetitions.

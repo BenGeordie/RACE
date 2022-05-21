@@ -77,12 +77,14 @@ if __name__ == '__main__':
         val_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/valid_contig_noid.csv')
         test_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/test_contig_noid.csv')
         make_embedding_model = make_avazu_embedding_model
+        n_samples = 32_343_173
 
     if args.data=='movielens':
         train_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/train_contig.csv')
         val_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/valid_contig.csv')
         test_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/test_contig.csv')
         make_embedding_model = make_movielens_embedding_model
+        n_samples = 1_404_802
         
 
 
@@ -93,7 +95,7 @@ if __name__ == '__main__':
 
     race_embedding_model = make_embedding_model()
     hash_module = PStableHash(race_embedding_model.output_shape[1], num_hashes=repetitions * concatenations, p=p, seed=seed)
-    race = Race(repetitions, concatenations, buckets, hash_module)
+    race = Race(repetitions, concatenations, buckets, hash_module, n_samples)
 
     weight_fn = utils.weight_with_race(race, race_embedding_model, accept_first_n, score_threshold, accept_prob)
     filtered_weighted_train_ds = utils.weight_and_filter(train_ds_batch, weight_fn)
