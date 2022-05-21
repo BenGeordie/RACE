@@ -86,5 +86,5 @@ plt.show()
 # # print(get_sampling_rate(scores, keep_first_n=10_000, threshold=0.05, accept_prob=0.1))
 
 
-# # #TODO: Range of taus for movielens: np.arange(0.04, 0.065, 0.002)
-# # #TODO: Range of taus for avazu: np.arange(0.04, 0.065, 0.002)
+# #TODO: Range of taus for movielens: np.arange(0.04, 0.065, 0.002)
+# #TODO: Range of taus for avazu: np.arange(0.01, 0.015, 0.0005)

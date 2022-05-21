@@ -73,9 +73,9 @@ if __name__ == '__main__':
         make_embedding_model = make_criteo_embedding_model
 
     if args.data=='avazu':
-        train_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/data/train_contig_noid.csv')
-        val_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/data/valid_contig_noid.csv')
-        test_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/data/test_contig_noid.csv')
+        train_ds = utils.load_avazu_csv('/home/bg31/diverseNS_data/Avazu/data/train_contig_noid.csv')
+        val_ds = utils.load_avazu_csv('/home/bg31/diverseNS_data/Avazu/data/valid_contig_noid.csv')
+        test_ds = utils.load_avazu_csv('/home/bg31/diverseNS_data/Avazu/data/test_contig_noid.csv')
         make_embedding_model = make_avazu_embedding_model
 
     if args.data=='movielens':
@@ -103,8 +103,10 @@ if __name__ == '__main__':
     hidden_layer_dims = [args.h]*args.n
     nn = make_clickthrough_nn(nn_embedding_model, hidden_layer_dims, lr)
 
-    # _ = nn.fit(filtered_weighted_train_ds)
+    # for i, _ in enumerate(filtered_weighted_train_ds):
+    #     print(i, end='', flush=True)
+    nn.fit(filtered_weighted_train_ds)
     # nn_embedding_model.compile('adam')
     # nn_embedding_model.evaluate(batch_data_val)
     # _ = nn.evaluate(batch_data_val)
-    _ = nn.evaluate(filtered_weighted_train_ds)
+    # _ = nn.evaluate(filtered_weighted_train_ds)

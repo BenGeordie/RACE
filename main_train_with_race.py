@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     
     timestr = datetime.now().strftime("%Y%m%d-%H%M%S")
-    rslt_dir = './final_results/rslt_end2end_train_race_thresh' + args.thrsh + '_accept' + args.prob + '_' + timestr
+    rslt_dir = './final_results/rslt_end2end_train_race_'+args.data+'_thresh' + str(args.thrsh) + '_accept' + str(args.prob) + '_' + timestr
     os.makedirs(rslt_dir)
 
     if args.data=='criteo':
@@ -73,16 +73,16 @@ if __name__ == '__main__':
         make_embedding_model = make_criteo_embedding_model
 
     if args.data=='avazu':
-        train_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/train_contig_noid.csv')
-        val_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/valid_contig_noid.csv')
-        test_ds = utils.load_avazu_csv('/Users/benitogeordie/Downloads/Avazu_x4/test_contig_noid.csv')
+        train_ds = utils.load_avazu_csv('/home/bg31/RACE/Avazu/data/train_contig_noid.csv')
+        val_ds = utils.load_avazu_csv('/home/bg31/RACE/Avazu/data/valid_contig_noid.csv')
+        test_ds = utils.load_avazu_csv('/home/bg31/RACE/Avazu/data/test_contig_noid.csv')
         make_embedding_model = make_avazu_embedding_model
         n_samples = 32_343_173
 
     if args.data=='movielens':
-        train_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/train_contig.csv')
-        val_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/valid_contig.csv')
-        test_ds = utils.load_movielens_csv('/Users/benitogeordie/Downloads/Movielenslatest_x1/test_contig.csv')
+        train_ds = utils.load_movielens_csv('/home/bg31/RACE/Movielens/data/train_contig.csv')
+        val_ds = utils.load_movielens_csv('/home/bg31/RACE/Movielens/data/valid_contig.csv')
+        test_ds = utils.load_movielens_csv('/home/bg31/RACE/Movielens/data/test_contig.csv')
         make_embedding_model = make_movielens_embedding_model
         n_samples = 1_404_802
         
