@@ -71,6 +71,7 @@ if __name__ == '__main__':
         val_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/data/valid.csv')
         test_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/data/test.csv')
         make_embedding_model = make_criteo_embedding_model
+        n_samples = 0 # TODO(Shabnam): fill
 
     if args.data=='avazu':
         train_ds = utils.load_avazu_csv('/home/bg31/RACE/Avazu/data/train_contig_noid.csv')
