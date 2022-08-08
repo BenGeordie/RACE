@@ -32,6 +32,19 @@ def load_csv_with_score(paths: List[str]):
     return data.map(lambda *line: (tf.stack(line[1:-1]), line[0], line[-1]))
 
 
+def load_avazu_csv_with_score(paths: List[str]):
+    """Loads CSV files and creates a dataset of (sample, target, scores) tuples.
+    Arguments:
+        paths: List of strings. Paths to CSV files.
+        sample_dim: integer. The dimension of each sample in the dataset.
+    Returns:
+        A TensorFlow dataset of (sample, target, scores) tuples.
+    """
+    data = tf.data.experimental.CsvDataset(
+        paths, record_defaults=[tf.int64]+[tf.float32 for _ in range(23)],header=True)
+    return data.map(lambda *line: (tf.stack(line[1:-1]), line[0], line[-1]))
+
+
 def load_avazu_csv(paths: List[str]):
     """Loads avazu CSV and creates a dataset of (sample, target) tuples.
 
@@ -160,7 +173,7 @@ def weight_and_filter_withscore(dataset: tf.data.Dataset, weight_fn):
     dataset_map = dataset.map(map_fn)
     dataset_map_unbatch = dataset_map.unbatch()
     return dataset_map_unbatch.filter(lambda _x, _y,_score, w: w > 0).batch(512) # To include scores column in the filtered dataset as well
-#    return dataset_map_unbatch.filter(lambda _x, _y, w: w >= 0).batch(512)
+  #  return dataset_map_unbatch.filter(lambda _x, _y, w: w >= 0).batch(512)
 
 
 def weight_with_logloss_score(score_threshold: float, accept_prob: float):
@@ -190,9 +203,9 @@ def weight_with_logloss_score(score_threshold: float, accept_prob: float):
         #This part is the other way around the RACE scores. We want to downsample the points with lower logloss (score) than the threshhol and keep the ones with higher logloss score than the threshold. 
         # Thus, taking the ceiling results is 1 if score > threshold, 0 otherwise.
 
-        #accepted_by_score_weights = tf.cast(tf.math.ceil(scores - score_threshold), dtype=tf.float32)
+        accepted_by_score_weights = tf.cast(tf.math.ceil(scores - score_threshold), dtype=tf.float32)
 
-        accepted_by_score_weights = tf.cast(tf.math.ceil(score_threshold - tf.math.reciprocal(scores)), dtype=tf.float32) 
+       # accepted_by_score_weights = tf.cast(tf.math.ceil(score_threshold - tf.math.reciprocal(scores)), dtype=tf.float32) 
         # Accepted by chance if random_num < accept_prob.
         # As above, taking the ceiling results is 1 if random_num < accept_prob, 0 otherwise.
         random_num = tf.random.uniform(shape=[tf.shape(x)[0]])
