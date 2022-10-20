@@ -5,7 +5,7 @@ import pdb
 
 # Tested lightly
 class Race(tf.Module):
-    def __init__(self, repetitions: int, concatenations: int, buckets: int, hash_module: tf.Module):
+    def __init__(self, repetitions: int, concatenations: int, buckets: int, hash_module: tf.Module, total_samples: int):
         """Race Constructor.
         Arguments:
             repetitions: integer. Number of rows in RACE.
@@ -26,7 +26,9 @@ class Race(tf.Module):
         self._b = buckets
         self._hash_module = hash_module
         self._arrays = tf.Variable(np.zeros(shape=(self._r, self._b)), dtype=tf.float64)
+        self._total_samples = tf.constant(total_samples, dtype=tf.int64)
         self._n = tf.Variable(0, dtype=tf.int64)
+        self._initial_n = tf.Variable(0, dtype=tf.int64)
 
     @tf.function(
         input_signature=[tf.TensorSpec(shape=None, dtype=tf.int64)])
@@ -69,6 +71,7 @@ class Race(tf.Module):
         # even if the samples are not batched.
         return tf.map_fn(lambda idxs: tf.stack([row_indices, idxs], axis=-1), col_indices)
     
+   
     @tf.function(
         input_signature=[tf.TensorSpec(shape=None, dtype=tf.float32)])
     def score(self, x):
@@ -80,24 +83,64 @@ class Race(tf.Module):
         """
         indices = self._get_indices(x)
         
-        # The score for each sample is the average count across every row
-        # divided by the number of elements that had been previously indexed.
-        score = tf.reduce_mean(tf.gather_nd(self._arrays, indices), axis=-1)
-        # Prevent division by 0.
-        one_over_n = tf.math.reciprocal_no_nan(tf.cast(self._n, dtype=tf.float64))
-        score *= one_over_n
+        # This assumes that dim-0 is the number of samples.
+        # This is a safe assumption because our embedding model will always output a 2D array,
+        # even if the samples are not batched.
+        self._n.assign(self._n + tf.cast(tf.shape(x)[0], dtype=tf.int64))
         
         # For each sample, increment the counters at the locations that they are hashed to.
         # Shape is n_samples x repetitions.
         update = tf.ones(shape=tf.shape(indices)[:-1], dtype=tf.float64)
         self._arrays.assign(tf.tensor_scatter_nd_add(self._arrays, indices, update))
+
+        # The score for each sample is the average count across every row
+        # divided by the number of elements that had been previously indexed.
+        score = tf.reduce_mean(tf.gather_nd(self._arrays, indices), axis=-1)
+        # Prevent division by 0.
+        one_over_n = tf.math.reciprocal_no_nan(tf.cast(self._n, dtype=tf.float64))
+      #  tf.print('score before',score)
+    #    tf.print('n inside race',self._n)
+        score *= one_over_n
+    #    tf.print('score after',score)
+    #    tf.print('score shape',score.shape)
+
+        return score, self._n
+
+    
+    @tf.function(
+        input_signature=[tf.TensorSpec(shape=None, dtype=tf.float32), tf.TensorSpec(shape=None, dtype=tf.float32)])
+    def score_weight(self, x, weight):
+        """Computes the RACE score of received samples and updates the RACE data structure.
+        Arguments: 
+            Tensor of samples to be scored and indexed, with shape (n_samples, sample_dim).
+        Returns:
+            Tensor of RACE scores for each sample, with shape (n_samples,).
+        """
+        indices = self._get_indices(x)
         
-        # This assumes that dim-0 is the number of samples. 
+        # This assumes that dim-0 is the number of samples.
         # This is a safe assumption because our embedding model will always output a 2D array,
         # even if the samples are not batched.
         self._n.assign(self._n + tf.cast(tf.shape(x)[0], dtype=tf.int64))
         
-        return score
+        # For each sample, increment the counters at the locations that they are hashed to.
+        # Shape is n_samples x repetitions.
+#         update = tf.ones(shape=tf.shape(indices)[:-1], dtype=tf.float64)
+        inv_weight = tf.math.reciprocal_no_nan(weight)
+        update = tf.cast(tf.tile(inv_weight,tf.constant([1,self._r])), dtype=tf.float64)
+        self._arrays.assign(tf.tensor_scatter_nd_add(self._arrays, indices, update))
+
+        # The score for each sample is the average count across every row
+        # divided by the number of elements that had been previously indexed.
+        score = tf.reduce_mean(tf.gather_nd(self._arrays, indices), axis=-1)
+        # Prevent division by 0.
+        one_over_n = tf.math.reciprocal_no_nan(tf.cast(self._n, dtype=tf.float64))
+       # tf.print('score_weight before',score)
+      #  tf.print('n inside race',self._n)
+        score *= one_over_n
+      #  tf.print('score_weight after',score)
+      #  tf.print('score shape',score.shape)
+        return score, self._n
 
     def samples_seen(self):
         """Returns the number of samples seen so far.

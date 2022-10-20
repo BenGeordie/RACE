@@ -10,6 +10,7 @@ import utils
 import importlib
 import os
 #from models import make_criteo_nn, make_criteo_embedding_model
+from models_criteo_temp import make_criteo_nn, make_criteo_embedding_model
 from models import make_avazu_embedding_model, make_clickthrough_nn
 from lsh_functions import PStableHash
 from race import Race
@@ -22,7 +23,7 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size", action="store", default=512, type=int)
     parser.add_argument("--eval_step", action="store", default=5000, type=int)
     parser.add_argument("--lr", action="store", default=0.001, type=float)
-    parser.add_argument("--h", action="store", default=1024, type=int, help='hidden layer size')
+    parser.add_argument("--h", action="store", default=800, type=int, help='hidden layer size')
     parser.add_argument("--n", action="store", default=4, type=int, help='number of hidden layers')
     parser.add_argument("--gpu", action="store", required=True, type=int)
     parser.add_argument("--seed", action="store", default=314150, type=int)
@@ -71,7 +72,7 @@ if __name__ == '__main__':
     accept_prob = args.prob
     
     timestr = datetime.now().strftime("%Y%m%d-%H%M%S")
-    rslt_dir = './final_results/rslt_'+dataset+'_end2end_train_logloss_withtrainmetric_'+timestr
+    rslt_dir = './final_results/rslt_'+dataset+'_end2end_train_logloss_withtrainmetric_onfilteredta_'+timestr
     os.makedirs(rslt_dir)
 
 
@@ -81,18 +82,23 @@ if __name__ == '__main__':
         val_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/data/valid_shuff_contig_trtsvalvocab_numoov0.csv')
         test_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/data/test_shuff_contig_trtsvalvocab_numoov0.csv')
         train_ds_foreval = utils.load_csv_with_score(data_path)
+       # train_ds_foreval_2 = utils.load_csv_with_score(data_path)
        # val_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/criteo_x1_small.csv')
        # test_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/criteo_x1_small.csv')
        # train_ds_foreval = utils.load_criteo_csv('/home/sd73/DiverseNS/criteo_x1_small.csv')
+        make_embedding_model = make_criteo_embedding_model
+        n_samples = 33_003_326
 
     if dataset=='avazu':
         print('===data avazu====')
        # train_ds = utils.load_avazu_csv('/home/bg31/RACE/Avazu/data/train_contig_noid.csv')
-        train_ds = utils.load_avazu_csv_with_score(data_path)
+        train_ds = utils.load_avazu_with_score(data_path)
         val_ds = utils.load_avazu_csv('/home/bg31/RACE/Avazu/data/valid_contig_noid.csv')
         test_ds = utils.load_avazu_csv('/home/bg31/RACE/Avazu/data/test_contig_noid.csv')
         #train_ds_foreval = utils.load_avazu_csv('/home/bg31/RACE/Avazu/data/train_contig_noid.csv')
         train_ds_foreval = utils.load_avazu_csv_with_score(data_path)
+       # train_ds_foreval_2 = utils.load_avazu_csv_with_score(data_path)
+
         make_embedding_model = make_avazu_embedding_model
         n_samples = 32_343_173
 
@@ -104,11 +110,13 @@ if __name__ == '__main__':
     batch_data_test = test_ds.batch(batch_size)
     batch_data_train = train_ds_foreval.batch(batch_size)
 
+   # batch_data_train_2 = train_ds_foreval_2.batch(batch_size)
 
 
     weight_fn = utils.weight_with_logloss_score(score_threshold, accept_prob)
     filtered_weighted_train_ds = utils.weight_and_filter_withscore(train_ds_batch, weight_fn)
-
+    
+   # filtered_weighted_train_ds_foreval = utils.weight_and_filter_withscore(batch_data_train_2, weight_fn) 
     # Dimensions of neural network hidden layers.
     #nn_embedding_model = make_criteo_embedding_model()
     nn_embedding_model = make_embedding_model()
@@ -124,8 +132,9 @@ if __name__ == '__main__':
     for ep in range(n_epoch):
         print('Epoch # =',ep)
         # in each epoch loop over batches
-        for itr, (x,y,sc,wght) in enumerate(filtered_weighted_train_ds):
-#            pdb.set_trace()
+       # for itr, (x,y,sc,wght) in enumerate(filtered_weighted_train_ds):
+        for itr, (x,y,wght) in enumerate(filtered_weighted_train_ds):
+            #pdb.set_trace()
             if ep==0:
                 sampling_w = np.append(sampling_w,wght.numpy().flatten())
             t1 = datetime.now()
@@ -146,8 +155,10 @@ if __name__ == '__main__':
                     if tot_itr<train_eval_stop:
                         ttr1 = datetime.now()
                         lst_tr = nn.evaluate(batch_data_train) # evaluate on train data
+                       # lst_tr = nn.evaluate(filtered_weighted_train_ds_foreval)
                         ttr2 = datetime.now()
                         eval_on_tr_time = (ttr2-ttr1) if tot_itr==0 else eval_on_tr_time + (ttr2-ttr1)
+                       # lst_tr = nn.evaluate(filtered_weighted_train_ds)
                     run_time = train_time + val_time + test_time +  eval_on_tr_time
                 else:
                     eval_on_tr_time = 0 # There is a column in the dataframe for this variable, in this case we should assign zero to it
@@ -161,13 +172,13 @@ if __name__ == '__main__':
                 val_df = val_df.append(pd.DataFrame(row_vals).transpose())    
                 if tot_itr>0:
                     os.remove(rslt_dir+'/val_metrics_itr'+str(tot_itr-eval_step)+'.csv')
-                    os.remove(rslt_dir+'/model_weights_itr'+str(tot_itr-eval_step)+'.h5')
+                   # os.remove(rslt_dir+'/model_weights_itr'+str(tot_itr-eval_step)+'.h5')
                 val_metric_cols = ['val_'+met for met in nn.metrics_names]
                 test_metric_cols = ['test_'+met for met in nn.metrics_names] 
                 train_metric_cols = ['train_'+met for met in nn.metrics_names]
                 header_nms = ['tot_itr']+train_metric_cols+val_metric_cols+test_metric_cols+['train_time','val_time','test_time','eval_on_tr_time','run_time','lr','repetitions','concatenations','buckets','p','batch_size','accept_first_n','score_threshold','accept_prob']+['nnd'+str(ii+1) for ii in range(args.n)]
                 val_df.to_csv(rslt_dir+'/val_metrics_itr'+str(tot_itr)+'.csv',header=header_nms,index=False)
-                nn.save_weights(rslt_dir+'/model_weights_itr'+str(tot_itr)+'.h5')
+               # nn.save_weights(rslt_dir+'/model_weights_itr'+str(tot_itr)+'.h5')
                 #save plots
                 plt.figure(figsize=(12, 10), dpi=80)
                 plt.subplot(2,2,1)
@@ -206,7 +217,7 @@ if __name__ == '__main__':
     val_df['train_size'] = np.nan
     val_df.loc[0,'train_size'] = sampling_w.size
     val_df.to_csv(rslt_dir+'/val_metrics_final.csv',header=header_nms+['final_train_time','final_run_time','total_time','w_morethan_1','w_1','train_size'],index=False)
-    nn.save_weights(rslt_dir+'/model_weights_final.h5')
+   # nn.save_weights(rslt_dir+'/model_weights_final.h5')
     val_df.columns = header_nms+['final_train_time','final_run_time','total_time','w_morethan_1','w_1','train_size']
     np.save(rslt_dir+'/train_race_weights.npy',sampling_w)
 

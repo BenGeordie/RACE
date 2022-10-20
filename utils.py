@@ -19,7 +19,7 @@ def load_criteo_csv(paths: List[str]):
         paths, record_defaults=[tf.int64]+[tf.float32 for _ in range(39)],header=True)
     return data.map(lambda *line: (tf.stack(line[1:]), line[0]))
 
-def load_csv_with_score(paths: List[str]):
+def load_criteo_with_score(paths: List[str]):
     """Loads CSV files and creates a dataset of (sample, target, scores) tuples.
     Arguments:
         paths: List of strings. Paths to CSV files.
@@ -32,7 +32,21 @@ def load_csv_with_score(paths: List[str]):
     return data.map(lambda *line: (tf.stack(line[1:-1]), line[0], line[-1]))
 
 
-def load_avazu_csv_with_score(paths: List[str]):
+def load_criteo_with_racescore(paths: List[str]):
+    """Loads CSV files and creates a dataset of (sample, target, scores) tuples.
+    Arguments:
+        paths: List of strings. Paths to CSV files.
+        sample_dim: integer. The dimension of each sample in the dataset.
+    Returns:
+        A TensorFlow dataset of (sample, target, scores) tuples.
+    """
+    data = tf.data.experimental.CsvDataset(
+        paths, record_defaults=[tf.int64]+[tf.float32 for _ in range(40)]+[tf.int64],header=True)
+    return data.map(lambda *line: (tf.stack(line[1:-2]), line[0], line[-2], line[-1]))
+
+
+
+def load_avazu_with_score(paths: List[str]):
     """Loads CSV files and creates a dataset of (sample, target, scores) tuples.
     Arguments:
         paths: List of strings. Paths to CSV files.
@@ -43,6 +57,19 @@ def load_avazu_csv_with_score(paths: List[str]):
     data = tf.data.experimental.CsvDataset(
         paths, record_defaults=[tf.int64]+[tf.float32 for _ in range(23)],header=True)
     return data.map(lambda *line: (tf.stack(line[1:-1]), line[0], line[-1]))
+
+
+def load_avazu_with_racescore(paths: List[str]):
+    """Loads CSV files and creates a dataset of (sample, target, scores) tuples.
+    Arguments:
+        paths: List of strings. Paths to CSV files.
+        sample_dim: integer. The dimension of each sample in the dataset.
+    Returns:
+        A TensorFlow dataset of (sample, target, scores) tuples.
+    """
+    data = tf.data.experimental.CsvDataset(
+        paths, record_defaults=[tf.int64]+[tf.float32 for _ in range(23)]+[tf.int64],header=True)
+    return data.map(lambda *line: (tf.stack(line[1:-2]), line[0], line[-2], line[-1]))
 
 
 def load_avazu_csv(paths: List[str]):
@@ -89,7 +116,6 @@ def weight_and_filter(dataset: tf.data.Dataset, weight_fn):
     def map_fn(x, y):
         weights = tf.ones(shape=tf.shape(y), dtype=tf.float32)
         weights = tf.math.multiply(weights,weight_fn(x,y))
-
         return (x, y, weights)
     dataset_map = dataset.map(map_fn)
     dataset_map_unbatch = dataset_map.unbatch()
@@ -117,13 +143,14 @@ def weight_with_race(race: Race, embedding_model: tf.Module, accept_first_n: int
         # score_threshold <= 1.0
         # score_threshold - scores is in the range [-1 + score_threshold, score_threshold]
         # Thus, taking the ceiling results in 1 if score < threshold, 0 otherwise.
-        print(scores)
         accepted_by_score_weights = tf.cast(tf.math.ceil(score_threshold - scores), dtype=tf.float32)
+   #     accepted_by_score_weights = tf.cast(tf.math.greater_equal(score_threshold, scores), dtype=tf.float32)
         
         # Accepted by chance if random_num < accept_prob.
         # As above, taking the ceiling results in 1 if random_num < accept_prob, 0 otherwise.
         random_num = tf.random.uniform(shape=[tf.shape(scores)[0]])
         accepted_by_chance = tf.math.ceil(tf.constant(accept_prob) - random_num)
+        #accepted_by_chance = tf.cast(tf.math.less_equal(random_num, tf.constant(accept_prob)), dtype=tf.float32)
         # If accepted, weight is 1 / accept_prob.
         accepted_by_chance_weights = tf.where(tf.cast(accepted_by_chance, dtype=tf.bool), tf.math.reciprocal_no_nan(accept_prob), [0.0])
 
@@ -146,6 +173,8 @@ def weight_with_race(race: Race, embedding_model: tf.Module, accept_first_n: int
         e = embedding_model(x)
 
         scores, n = race.score(e)
+       # tf.print('n inside _weight', n)
+        tf.print('scores inside _weight', scores)
 
         return tf.cond(
             tf.less(n, tf.constant(accept_first_n, dtype=tf.int64)),
@@ -168,12 +197,12 @@ def weight_and_filter_withscore(dataset: tf.data.Dataset, weight_fn):
         weights = tf.ones(shape=tf.shape(y), dtype=tf.float32)
         weights = tf.math.multiply(weights,weight_fn(x,y,score))
 
-        return (x, y, score ,weights) # if you want to return score as well
-#        return (x, y, weights)
+       # return (x, y, score, weights) # if you want to return score as well
+        return (x, y, weights)
     dataset_map = dataset.map(map_fn)
     dataset_map_unbatch = dataset_map.unbatch()
-    return dataset_map_unbatch.filter(lambda _x, _y,_score, w: w > 0).batch(512) # To include scores column in the filtered dataset as well
-  #  return dataset_map_unbatch.filter(lambda _x, _y, w: w >= 0).batch(512)
+#    return dataset_map_unbatch.filter(lambda _x, _y, _score, w: w > 0).batch(512) # To include scores column in the filtered dataset as well
+    return dataset_map_unbatch.filter(lambda _x, _y, w: w > 0).batch(512)
 
 
 def weight_with_logloss_score(score_threshold: float, accept_prob: float):
@@ -203,13 +232,14 @@ def weight_with_logloss_score(score_threshold: float, accept_prob: float):
         #This part is the other way around the RACE scores. We want to downsample the points with lower logloss (score) than the threshhol and keep the ones with higher logloss score than the threshold. 
         # Thus, taking the ceiling results is 1 if score > threshold, 0 otherwise.
 
-        accepted_by_score_weights = tf.cast(tf.math.ceil(scores - score_threshold), dtype=tf.float32)
-
+       # accepted_by_score_weights = tf.cast(tf.math.ceil(scores - score_threshold), dtype=tf.float32)
+        accepted_by_score_weights = tf.cast(tf.math.greater_equal(scores, score_threshold), dtype=tf.float32)
        # accepted_by_score_weights = tf.cast(tf.math.ceil(score_threshold - tf.math.reciprocal(scores)), dtype=tf.float32) 
         # Accepted by chance if random_num < accept_prob.
         # As above, taking the ceiling results is 1 if random_num < accept_prob, 0 otherwise.
         random_num = tf.random.uniform(shape=[tf.shape(x)[0]])
-        accepted_by_chance = tf.math.ceil(tf.constant(accept_prob) - random_num)
+        #accepted_by_chance = tf.math.ceil(tf.constant(accept_prob) - random_num)
+        accepted_by_chance = tf.cast(tf.math.less_equal(random_num, tf.constant(accept_prob)), dtype=tf.float32)
         # If accepted, weight is 1 / accept_prob.
         accepted_by_chance_weights = tf.where(tf.cast(accepted_by_chance, dtype=tf.bool), tf.math.reciprocal_no_nan(accept_prob), [0.0])
 
@@ -242,11 +272,236 @@ def weight_random(embedding_model: tf.Module, down_sampling_rate: float):
         # Accepted by chance if random_num < accept_prob.
         # As above, taking the ceiling results in 1 if random_num < accept_prob, 0 otherwise.
         random_num = tf.random.uniform(shape=[tf.shape(x)[0]])
-        accepted_by_chance = tf.math.ceil(tf.constant(accept_prob) - random_num)
-        sampled_negative_weights = tf.where(tf.cast(accepted_by_chance, dtype=tf.bool), [1.0], [0.0])
+       # accepted_by_chance = tf.math.ceil(tf.constant(accept_prob) - random_num)
+        #accepted_by_chance = tf.cast(tf.math.less_equal(random_num, tf.constant(accept_prob)), dtype=tf.float32)
 
+       # sampled_negative_weights = tf.where(tf.cast(accepted_by_chance, dtype=tf.bool), [1.0], [0.0])
+        sampled_negative_weights = tf.cast(tf.math.less_equal(random_num, tf.constant(accept_prob)), dtype=tf.float32)
         # Accept if positive, weight accordingly otherwise.
         return tf.where(tf.cast(y, dtype=tf.bool), [1.0], sampled_negative_weights)
 
+
+    return _weight
+
+
+def weight_with_precomputed_racescores(accept_first_n: int, score_threshold: float, accept_prob: float):
+    """Function factory for weighting samples with RACE. To be used in conjunction with weight_and_filter_withscore, defined above.
+    Note that all positive samples will be weighted 1.0.
+    For convenience, further references to "samples" refer to negative samples, unless otherwise specified.
+    Arguments: 
+        accept_first_n: integer. Number of samples to be accepted and weighted 1.0 before 
+            reweighting based on RACE and random sampling.
+        score_threshold: float. Samples with lower RACE scores than this threshold are weighted 1.0.
+        accept_prob: float. If we have seen more than accept_first_n samples, we accept the sample and 
+            weight it 1 / accept_prob.
+    """
+    
+    @tf.function(
+        input_signature=[tf.TensorSpec(shape=None, dtype=tf.float32), tf.TensorSpec(shape=None, dtype=tf.int64)])
+    def _sample_after_first_n(scores, y):
+        # score_threshold <= 1.0
+        # score_threshold - scores is in the range [-1 + score_threshold, score_threshold]
+        # Thus, taking the ceiling results in 1 if score < threshold, 0 otherwise.
+        accepted_by_score_weights = tf.cast(tf.math.ceil(score_threshold - scores), dtype=tf.float32)
+   #     accepted_by_score_weights = tf.cast(tf.math.greater_equal(score_threshold, scores), dtype=tf.float32)
+        
+        # Accepted by chance if random_num < accept_prob.
+        # As above, taking the ceiling results in 1 if random_num < accept_prob, 0 otherwise.
+        random_num = tf.random.uniform(shape=[tf.shape(scores)[0]])
+        accepted_by_chance = tf.math.ceil(tf.constant(accept_prob) - random_num)
+        #accepted_by_chance = tf.cast(tf.math.less_equal(random_num, tf.constant(accept_prob)), dtype=tf.float32)
+        # If accepted, weight is 1 / accept_prob.
+        accepted_by_chance_weights = tf.where(tf.cast(accepted_by_chance, dtype=tf.bool), tf.math.reciprocal_no_nan(accept_prob), [0.0])
+
+        # If passing accepted_by_score_weights == 1.0, keep the weight. Otherwise, if accepted by random chance,
+        # weight by 1 / accept_prob
+        sampled_negative_weights = tf.where(tf.cast(accepted_by_score_weights, dtype=tf.bool), accepted_by_score_weights, accepted_by_chance_weights)
+        
+        # Accept if positive, weight accordingly otherwise.
+        return tf.where(tf.cast(y, dtype=tf.bool), [1.0], sampled_negative_weights)
+    
+    @tf.function(
+        input_signature=[tf.TensorSpec(shape=None, dtype=tf.float32), tf.TensorSpec(shape=None, dtype=tf.int64), tf.TensorSpec(shape=None, dtype=tf.float32), tf.TensorSpec(shape=None, dtype=tf.int64)])
+    def _weight(x, y, scores, n):
+        """
+        Arguments:
+            x: samples (both positive and negative)
+            y: targets
+            scores: race scores
+        """
+        return tf.cond(
+            tf.less(n[0], tf.constant(accept_first_n, dtype=tf.int64)),
+            lambda: tf.ones(shape=tf.shape(x)[0]),
+            lambda: _sample_after_first_n(scores, y)
+        )
+
+    return _weight
+
+def weight_and_filter_withracescore(dataset: tf.data.Dataset, weight_fn):
+    """Weights each sample in the dataset using a weighting function, and filters out elements with 0 weight.
+    Arguments:
+        data: TensorFlow dataset of (sample, target) tuples.
+        weight_fn: A function that takes in samples and weights them.
+    Returns:
+        A TensorFlow dataset of (sample, target, sample_weight) tuples.
+    """
+    def map_fn(x, y, score, ns):
+        weights = tf.ones(shape=tf.shape(y), dtype=tf.float32)
+        weights = tf.math.multiply(weights,weight_fn(x,y,score,ns))
+
+        return (x, y, score, ns , weights) # if you want to return score as well
+#        return (x, y, weights)
+    dataset_map = dataset.map(map_fn)
+    dataset_map_unbatch = dataset_map.unbatch()
+    return dataset_map_unbatch.filter(lambda _x, _y, _score ,_ns, w: w > 0).batch(512) # To include scores column in the filtered dataset as well
+ #   return dataset_map_unbatch.filter(lambda _x, _y, w: w > 0).batch(512)
+
+
+    # Untested
+def weight_with_gradient_race(race: Race, embedding_model: tf.Module, classifier_model: tf.Module, accept_first_n: int, score_threshold: float, accept_prob: float):
+    """Function factory for weighting samples with RACE. To be used in conjunction with weight_and_filter, defined above.
+    Note that all positive samples will be weighted 1.0.
+    For convenience, further references to "samples" refer to negative samples, unless otherwise specified.
+    Arguments: 
+        race: Initialized RACE data structure.
+        embedding_model: TensorFlow model for embedding samples into a RACE-compatible space.
+        accept_first_n: integer. Number of samples to be accepted and weighted 1.0 before 
+            reweighting based on RACE and random sampling.
+        score_threshold: float. Samples with lower RACE scores than this threshold are weighted 1.0.
+        accept_prob: float. If we have seen more than accept_first_n samples, we accept the sample and 
+            weight it 1 / accept_prob.
+    """
+    
+    @tf.function(
+        input_signature=[tf.TensorSpec(shape=None, dtype=tf.float64), tf.TensorSpec(shape=None, dtype=tf.int64)])
+    def _sample_after_first_n(scores, y):
+        # score_threshold <= 1.0
+        # score_threshold - scores is in the range [-1 + score_threshold, score_threshold]
+        # Thus, taking the ceiling results in 1 if score < threshold, 0 otherwise.
+        accepted_by_score_weights = tf.cast(tf.math.ceil(score_threshold - scores), dtype=tf.float32)
+   #     accepted_by_score_weights = tf.cast(tf.math.greater_equal(score_threshold, scores), dtype=tf.float32)
+        
+        # Accepted by chance if random_num < accept_prob.
+        # As above, taking the ceiling results in 1 if random_num < accept_prob, 0 otherwise.
+        random_num = tf.random.uniform(shape=[tf.shape(scores)[0]])
+        accepted_by_chance = tf.math.ceil(tf.constant(accept_prob) - random_num)
+        #accepted_by_chance = tf.cast(tf.math.less_equal(random_num, tf.constant(accept_prob)), dtype=tf.float32)
+        # If accepted, weight is 1 / accept_prob.
+        accepted_by_chance_weights = tf.where(tf.cast(accepted_by_chance, dtype=tf.bool), tf.math.reciprocal_no_nan(accept_prob), [0.0])
+
+        # If passing accepted_by_score_weights == 1.0, keep the weight. Otherwise, if accepted by random chance,
+        # weight by 1 / accept_prob
+        sampled_negative_weights = tf.where(tf.cast(accepted_by_score_weights, dtype=tf.bool), accepted_by_score_weights, accepted_by_chance_weights)
+        # Accept if positive, weight accordingly otherwise.
+        return tf.where(tf.cast(y, dtype=tf.bool), [1.0], sampled_negative_weights)
+    
+    @tf.function(
+        input_signature=[tf.TensorSpec(shape=None, dtype=tf.float32), tf.TensorSpec(shape=None, dtype=tf.int64)])
+    def _weight(x, y):
+        """
+        Arguments:
+            x: samples (both positive and negative)
+            y: targets
+        """
+        with tf.GradientTape() as tape:
+            wghts = classifier_model.trainable_variables
+      #      sh = [wghts[i].shape for i in range(len(wghts))]
+   #         tf.print(sh)
+            tape.watch(wghts)
+            pred = classifier_model(x)
+            # Loss
+            bce =  tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
+            loss = bce(tf.reshape(y,(-1,1)),pred)
+        # Compute Jacobian
+        jacob = tape.jacobian(loss, wghts)
+    #    tf.print('jacob len',len(jacob))
+    #    tf.print('jacob -11',jacob[-11].shape)
+        
+        # compute gradient norm
+        grad_norm = tf.zeros(tf.shape(x)[0]) 
+        tf.print('len jacob',len(jacob))
+        for i in range(len(jacob)):
+            tf.print('loop num',i)
+            if len(jacob[i].shape) == 3:
+                grad_norm +=  tf.norm(jacob[i], ord=2, axis=(1,2))
+            elif len(jacob[i].shape) == 2:
+                grad_norm +=  tf.norm(jacob[i], ord=2, axis=(1))
+        
+        grad_norm = tf.reshape(grad_norm,(-1,1))
+        loss = tf.reshape(loss,(-1,1))
+
+        e = embedding_model(x)
+        scores, n = race.score_weight(e, grad_norm)
+#         scores, n = race.score_gradient_weight(e, tf.ones(tf.shape(grad_norm)))
+
+        return tf.cond(
+            tf.less(n, tf.constant(accept_first_n, dtype=tf.int64)),
+            lambda: tf.ones(shape=tf.shape(e)[0]),
+            lambda: _sample_after_first_n(scores, y)
+        )
+
+    return _weight
+
+
+    # Untested
+def weight_with_loss_race(race: Race, embedding_model: tf.Module, classifier_model: tf.Module, accept_first_n: int, score_threshold: float, accept_prob: float):
+    """Function factory for weighting samples with RACE. To be used in conjunction with weight_and_filter, defined above.
+    Note that all positive samples will be weighted 1.0.
+    For convenience, further references to "samples" refer to negative samples, unless otherwise specified.
+    Arguments: 
+        race: Initialized RACE data structure.
+        embedding_model: TensorFlow model for embedding samples into a RACE-compatible space.
+        accept_first_n: integer. Number of samples to be accepted and weighted 1.0 before 
+            reweighting based on RACE and random sampling.
+        score_threshold: float. Samples with lower RACE scores than this threshold are weighted 1.0.
+        accept_prob: float. If we have seen more than accept_first_n samples, we accept the sample and 
+            weight it 1 / accept_prob.
+    """
+    
+    @tf.function(
+        input_signature=[tf.TensorSpec(shape=None, dtype=tf.float64), tf.TensorSpec(shape=None, dtype=tf.int64)])
+    def _sample_after_first_n(scores, y):
+        # score_threshold <= 1.0
+        # score_threshold - scores is in the range [-1 + score_threshold, score_threshold]
+        # Thus, taking the ceiling results in 1 if score < threshold, 0 otherwise.
+        accepted_by_score_weights = tf.cast(tf.math.ceil(score_threshold - scores), dtype=tf.float32)
+   #     accepted_by_score_weights = tf.cast(tf.math.greater_equal(score_threshold, scores), dtype=tf.float32)
+        
+        # Accepted by chance if random_num < accept_prob.
+        # As above, taking the ceiling results in 1 if random_num < accept_prob, 0 otherwise.
+        random_num = tf.random.uniform(shape=[tf.shape(scores)[0]])
+        accepted_by_chance = tf.math.ceil(tf.constant(accept_prob) - random_num)
+        #accepted_by_chance = tf.cast(tf.math.less_equal(random_num, tf.constant(accept_prob)), dtype=tf.float32)
+        # If accepted, weight is 1 / accept_prob.
+        accepted_by_chance_weights = tf.where(tf.cast(accepted_by_chance, dtype=tf.bool), tf.math.reciprocal_no_nan(accept_prob), [0.0])
+
+        # If passing accepted_by_score_weights == 1.0, keep the weight. Otherwise, if accepted by random chance,
+        # weight by 1 / accept_prob
+        sampled_negative_weights = tf.where(tf.cast(accepted_by_score_weights, dtype=tf.bool), accepted_by_score_weights, accepted_by_chance_weights)
+        # Accept if positive, weight accordingly otherwise.
+        return tf.where(tf.cast(y, dtype=tf.bool), [1.0], sampled_negative_weights)
+    
+    @tf.function(
+        input_signature=[tf.TensorSpec(shape=None, dtype=tf.float32), tf.TensorSpec(shape=None, dtype=tf.int64)])
+    def _weight(x, y):
+        """
+        Arguments:
+            x: samples (both positive and negative)
+            y: targets
+        """
+
+        pred = classifier_model(x)
+        bce =  tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
+        loss = bce(tf.reshape(y,(-1,1)),pred)
+        loss = tf.reshape(loss,(-1,1))
+        e = embedding_model(x)
+        scores, n = race.score_weight(e, loss)
+       # race.summary()
+
+        return tf.cond(
+            tf.less(n, tf.constant(accept_first_n, dtype=tf.int64)),
+            lambda: tf.ones(shape=tf.shape(e)[0]),
+            lambda: _sample_after_first_n(scores, y)
+        )
 
     return _weight
