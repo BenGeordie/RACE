@@ -73,8 +73,8 @@ if __name__ == '__main__':
     
     timestr = datetime.now().strftime("%Y%m%d-%H%M%S")
     #rslt_dir = './final_results/rslt_'+args.data+'end2end_train_race_outputembed50_savewght_pretrained2epoch_withtrainmetric_'+timestr
-   # rslt_dir = './final_results/rslts03102022/rslt_'+args.data+'end2end_train_race_weightwithloss_pretraineditr40000_EditRace_'+timestr
-    rslt_dir = './final_results/rslts03102022/test_rslt_'+args.data+'end2end_train_race_weightwithloss_Nopretrain_EditRace_60Kitr_firstn100K_'+timestr
+    rslt_dir = './final_results/rslts03102022/rslt_'+args.data+'end2end_train_race_weightwithloss_pretraineditr40000_EditRace_'+timestr
+   # rslt_dir = './final_results/rslts03102022/rslt_'+args.data+'end2end_train_race_weightwithloss_NoraceUpdate_normalize_pretrain_modifyPretrain_'+timestr
     os.makedirs(rslt_dir)
 
     if dataset=='criteo':
@@ -86,8 +86,8 @@ if __name__ == '__main__':
 
        # train_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/criteo_x1_small.csv')
        # val_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/criteo_x1_small.csv')
-        #test_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/criteo_x1_small.csv')
-        #train_ds_foreval = utils.load_criteo_csv('/home/sd73/DiverseNS/criteo_x1_small.csv')
+       # test_ds = utils.load_criteo_csv('/home/sd73/DiverseNS/criteo_x1_small.csv')
+       # train_ds_foreval = utils.load_criteo_csv('/home/sd73/DiverseNS/criteo_x1_small.csv')
         #train_ds_foreval_2 = utils.load_criteo_csv('/home/sd73/DiverseNS/criteo_x1_small.csv')
         make_embedding_model = make_criteo_embedding_model 
         n_samples = 33_003_326
@@ -118,14 +118,14 @@ if __name__ == '__main__':
     ####
     if pre_train_flg and args.data=='criteo':
      #   pdb.set_trace()
-        print('======using pre-trained network for race embedding======')
+        print('======using pre-trained network=======')
        # weight_dir = 'data_with_score/rslt_train_alldata_20220517-175741/'
        # weight_dir = 'final_results/rslt_train_alldata_outputembed50_20220513-151927/' # pretrained2epoch
        # weight_dir = 'final_results/rslts03102022/rslt_criteo_train_alldata_outputembed50_1epoch_20221003-125035/' # pretrained1epochNew
         #pdb.set_trace()
         weight_dir = 'final_results/rslts03102022/rslt_criteo_train_alldata_outputembed50_itr40000_20221011-013911' 
         hidden_layer_dims = [args.h]*args.n
-        nn = make_clickthrough_nn(race_embedding_model, hidden_layer_dims, lr) 
+        nn = make_clickthrough_nn(make_embedding_model(), hidden_layer_dims, lr) 
         weight_file = glob.glob(weight_dir+'/model_weights_*.h5')
         nn.load_weights(weight_file[0])
        # race_embedding_model.set_weights(nn0.layers[1].get_weights())
@@ -142,14 +142,14 @@ if __name__ == '__main__':
     if pre_train_flg and args.data=='avazu':
      #   pdb.set_trace()
    #     print('=====inja=====')
-        print('======using pre-trained network for race embedding======')
+        print('======using pre-trained network =======') 
        # weight_dir = 'data_with_score/rslt_train_alldata_20220517-175741/'
        # weight_dir = '/home/bg31/RACE/final_results/rslt_train_alldata_20220517-233548/' # h=1024
         weight_dir = 'final_results/rslt_train_alldata_outputembed50_withtrainmetric_20220627-201346/' # h 800 
         hidden_layer_dims = [args.h]*args.n
         #nn0 = make_criteo_nn(race_embedding_model, hidden_layer_dims, lr)
         #pdb.set_trace()
-        nn = make_clickthrough_nn(race_embedding_model, hidden_layer_dims, lr)
+        nn = make_clickthrough_nn(make_embedding_model(), hidden_layer_dims, lr)
         weight_file = glob.glob(weight_dir+'/model_weights_*.h5')
         nn.load_weights(weight_file[0])
        # race_embedding_model.set_weights(nn0.layers[1].get_weights())
@@ -173,8 +173,8 @@ if __name__ == '__main__':
     if not pre_train_flg:
         print('===Not Pre Trained===') 
        # nn_embedding_model = make_criteo_embedding_model()
-       # nn_embedding_model = make_embedding_model()
-        nn_embedding_model = race_embedding_model # Correct
+        nn_embedding_model = make_embedding_model()
+       # nn_embedding_model = race_embedding_model 
         hidden_layer_dims = [args.h]*args.n
         #nn = make_criteo_nn(nn_embedding_model, hidden_layer_dims, lr)
         nn = make_clickthrough_nn(nn_embedding_model, hidden_layer_dims, lr)
@@ -193,7 +193,7 @@ if __name__ == '__main__':
         print('Epoch # =',ep)
         # in each epoch loop over batches
         for itr, (x,y,wght) in enumerate(filtered_weighted_train_ds):
-            pdb.set_trace()
+        #    pdb.set_trace()
            # if tot_itr>130000:
             if tot_itr>60000:
            # if tot_itr>3:
