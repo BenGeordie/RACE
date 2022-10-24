@@ -127,7 +127,7 @@ class Race(tf.Module):
         
         # For each sample, increment the counters at the locations that they are hashed to.
         # Shape is n_samples x repetitions.
-        update = tf.ones(shape=tf.shape(indices)[:-1], dtype=tf.float64)
+        #update = tf.ones(shape=tf.shape(indices)[:-1], dtype=tf.float64)
         inv_weight = tf.math.reciprocal_no_nan(weight)
        # tf.print('weight',weight)
        # tf.print('inv_weight',inv_weight)
