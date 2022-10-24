@@ -60,8 +60,11 @@ class weighted_race():
         e = self.embedding_model(x)
         self._n.assign(self._n + tf.cast(tf.shape(x)[0], dtype=tf.int64))
         scores, n = self.race.score_weight(e, loss)
-       # tf.print('=====_weight_with_loss=====')
-       # tf.print('n inside weight_with_loss', self._n)
+       # tf.print('=====Start _weight_with_loss=====')
+       # tf.print('self._n inside weight_with_loss', self._n)
+       # tf.print('n inside weight_with_loss', n)
+       # tf.print('scores inside weight_with_loss', scores)
+        #tf.print('=====Finish _weight_with_loss=====')
         return(scores)
         
     
@@ -127,7 +130,7 @@ class weighted_race():
         """
         e = self.embedding_model(x)
         self._n.assign(self._n + tf.cast(tf.shape(x)[0], dtype=tf.int64))
-        scores, n = self.race.score(e)
+        scores, n = self.race.score_Noupdate(e)
        # tf.print('=====_no_weight=====')
        # tf.print('n inside _no_weight', self._n)
         return(scores)
@@ -145,7 +148,7 @@ class weighted_race():
         )
        # tf.print('=====final_weight_loss=====')
        # tf.print('n inside final_weight_loss', self._n)
-        tf.print('scores in final weight', scores)
+      #  tf.print('scores in final weight', scores)
        # tf.print('tf cond',cond)
 
         return tf.cond(

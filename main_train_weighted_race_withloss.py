@@ -74,7 +74,7 @@ if __name__ == '__main__':
     timestr = datetime.now().strftime("%Y%m%d-%H%M%S")
     #rslt_dir = './final_results/rslt_'+args.data+'end2end_train_race_outputembed50_savewght_pretrained2epoch_withtrainmetric_'+timestr
     rslt_dir = './final_results/rslts03102022/rslt_'+args.data+'end2end_train_race_weightwithloss_pretraineditr40000_EditRace_'+timestr
-   # rslt_dir = './final_results/rslts03102022/rslt_'+args.data+'end2end_train_race_weightwithloss_NoraceUpdate_normalize_pretrain_modifyPretrain_'+timestr
+   # rslt_dir = './final_results/rslts03102022/rslt_'+args.data+'end2end_train_race_weightwithloss_NoraceUpdate_Nonormalize_pretrain_modifyPretrain_firstn'+str(args.first_n)+'_thrsh'+str(args.thrsh)+'_'+timestr
     os.makedirs(rslt_dir)
 
     if dataset=='criteo':
@@ -193,7 +193,7 @@ if __name__ == '__main__':
         print('Epoch # =',ep)
         # in each epoch loop over batches
         for itr, (x,y,wght) in enumerate(filtered_weighted_train_ds):
-        #    pdb.set_trace()
+       #     pdb.set_trace()
            # if tot_itr>130000:
             if tot_itr>60000:
            # if tot_itr>3:
