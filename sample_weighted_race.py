@@ -26,22 +26,27 @@ class weighted_race():
         # score_threshold - scores is in the range [-1 + score_threshold, score_threshold]
         # Thus, taking the ceiling results in 1 if score < threshold, 0 otherwise.
        # accepted_by_score_weights = tf.cast(tf.math.ceil(self.score_threshold - scores), dtype=tf.float32) 
-        accepted_by_score_weights = tf.cast(tf.math.greater_equal(self.score_threshold, tf.cast(scores, tf.float32)), dtype=tf.float32)
-        
+       # accepted_by_score_weights = tf.cast(tf.math.greater_equal(self.score_threshold, tf.cast(scores, tf.float32)), dtype=tf.float32) # inv loss
+        accepted_by_score_weights = tf.cast(tf.math.less_equal(self.score_threshold, tf.cast(scores, tf.float32)), dtype=tf.float32) # loss
+       # tf.print('scores',scores)
+       # tf.print('accepted_by_score_weights',accepted_by_score_weights)
         # Accepted by chance if random_num < accept_prob.
         # As above, taking the ceiling results in 1 if random_num < accept_prob, 0 otherwise.
         random_num = tf.random.uniform(shape=[tf.shape(scores)[0]])
+       # tf.print('random_num',random_num)
        # accepted_by_chance = tf.math.ceil(tf.constant(self.accept_prob) - random_num)
         accepted_by_chance = tf.cast(tf.math.less_equal(random_num, tf.constant(self.accept_prob)), dtype=tf.float32)
+       # tf.print('accepted_by_chance',accepted_by_chance)
         # If accepted, weight is 1 / accept_prob.
         accepted_by_chance_weights = tf.where(tf.cast(accepted_by_chance, dtype=tf.bool), tf.math.reciprocal_no_nan(self.accept_prob), [0.0])
-        
+       # tf.print('accepted_by_chance_weights',accepted_by_chance_weights)
         # If passing accepted_by_score_weights == 1.0, keep the weight. Otherwise, if accepted by random chance,
         # weight by 1 / accept_prob
         sampled_negative_weights = tf.where(tf.cast(accepted_by_score_weights, dtype=tf.bool), accepted_by_score_weights, accepted_by_chance_weights)
         # Accept if positive, weight accordingly otherwise.
        # tf.print('=====sample_after_first_n=====')
-        
+       # tf.print('sampled_negative_weights',sampled_negative_weights)
+       # tf.print('return',tf.where(tf.cast(y, dtype=tf.bool), [1.0], sampled_negative_weights))
         return tf.where(tf.cast(y, dtype=tf.bool), [1.0], sampled_negative_weights)
     
     @tf.function(
@@ -148,7 +153,7 @@ class weighted_race():
         )
        # tf.print('=====final_weight_loss=====')
        # tf.print('n inside final_weight_loss', self._n)
-      #  tf.print('scores in final weight', scores)
+     #   tf.print('scores in final weight', scores)
        # tf.print('tf cond',cond)
 
         return tf.cond(
@@ -168,7 +173,7 @@ class weighted_race():
             lambda: self._no_weight(x, y)
         )
        # tf.print('n inside final_weight', self._n)
-       # tf.print('scores in final weight', scores)
+      #  tf.print('scores in final weight', scores)
        # tf.print('tf cond',cond)
 
         return tf.cond(
